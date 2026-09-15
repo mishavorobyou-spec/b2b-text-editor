@@ -14,6 +14,7 @@
 .format-trigger:hover:not(:disabled),.format-trigger[aria-expanded=true]{color:#1677ff;}
 .rich-input{min-height:98px;resize:vertical;overflow:auto;border:1px solid var(--ed-border);border-top:0;border-radius:0 0 6px 6px;padding:5px 11px;background:white;}
 .rich-input .tiptap{min-height:86px;outline:none;font:400 14px/22px Roboto,sans-serif;white-space:pre-wrap;overflow-wrap:anywhere;}
+.rich-input .tiptap ::selection{background:rgba(186,224,255,.72);color:inherit;}
 .rich-input .tiptap p{margin:0;}
 .rich-input .tiptap h1,.rich-input .tiptap h2,.rich-input .tiptap h3,.rich-input .tiptap h4,.rich-input .tiptap h5{margin:0;font-weight:600;line-height:1.4;}
 .rich-input .tiptap h1{font-size:38px;}.rich-input .tiptap h2{font-size:30px;}.rich-input .tiptap h3{font-size:24px;}.rich-input .tiptap h4{font-size:20px;}.rich-input .tiptap h5{font-size:16px;}

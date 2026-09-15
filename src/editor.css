@@ -4,6 +4,12 @@
 .ed-tools-Short.ed-High{padding-top:11px;padding-bottom:11px;}
 .ed-tools-Short.ed-Short{padding-top:5px;padding-bottom:5px;}
 .ed-tool{display:inline-flex;align-items:center;justify-content:center;gap:2px;flex:0 0 auto;height:20px;padding:0;border:0;border-radius:3px;background:transparent;color:rgba(0,0,0,.65);cursor:default;font:inherit;}
+.ed-basic-tool:not(:disabled){cursor:pointer;}
+.ed-basic-icon{display:block;width:20px;height:20px;position:relative;}
+.ed-basic-icon .ed-icon,.ed-basic-hover{position:absolute;inset:0;width:100%;height:100%;}
+.ed-basic-hover{display:none;}
+.ed-basic-tool:hover .ed-basic-icon .ed-icon,.ed-basic-tool:focus-visible .ed-basic-icon .ed-icon{display:none;}
+.ed-basic-tool:hover .ed-basic-hover,.ed-basic-tool:focus-visible .ed-basic-hover{display:block;}
 .ed-icon{display:block;width:20px;height:20px;flex:none;}
 .ed-caret{display:block;width:8px;height:8px;flex:none;}
 .ed-tool:focus-visible{outline:2px solid #1677ff;outline-offset:3px;}
@@ -22,6 +28,9 @@
 .ed-state-Disabled{background:rgba(0,0,0,.04);}
 .ed-state-Disabled .ed-tool .ed-icon,.ed-state-Disabled .ed-tool .ed-caret{opacity:.3;}
 .ed-state-Disabled .ed-tool{color:rgba(0,0,0,.25);cursor:not-allowed;}
+.ed-state-Disabled .ed-basic-hover{display:none!important;}
+.ed-state-Disabled .ed-basic-icon .ed-icon{display:block!important;}
+.ed-icon-16 .ed-basic-icon{width:16px;height:16px;}
 .text-editor .ed-input.ant-input{display:block;min-height:52px;height:52px;resize:vertical;margin:0;border-top:0;border-radius:0 0 6px 6px;padding:4px 11px;font-family:Inter,sans-serif;font-size:14px;line-height:22px;box-shadow:none;}
 .text-editor .ed-input.ant-input:focus,.text-editor .ed-input.ant-input:hover{border-color:#d9d9d9;box-shadow:none;}
 .text-editor.editor-state-Error .ed-input.ant-input{border-color:#ff4d4f;}
