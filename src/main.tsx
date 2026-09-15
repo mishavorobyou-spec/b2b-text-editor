@@ -4,6 +4,22 @@ import {ConfigProvider, Select, Segmented, Switch, Button} from 'antd';
 import '@fontsource/inter/400.css';
 import '@fontsource/inter/500.css';
 import '@fontsource/inter/600.css';
+import '@fontsource/roboto/400.css';
+import '@fontsource/roboto/600.css';
+import '@fontsource/roboto/cyrillic-400.css';
+import '@fontsource/roboto/cyrillic-600.css';
+import '@fontsource/open-sans/400.css';
+import '@fontsource/open-sans/600.css';
+import '@fontsource/open-sans/cyrillic-400.css';
+import '@fontsource/open-sans/cyrillic-600.css';
+import '@fontsource/noto-sans/400.css';
+import '@fontsource/noto-sans/600.css';
+import '@fontsource/noto-sans/cyrillic-400.css';
+import '@fontsource/noto-sans/cyrillic-600.css';
+import '@fontsource/rubik/400.css';
+import '@fontsource/rubik/600.css';
+import '@fontsource/rubik/cyrillic-400.css';
+import '@fontsource/rubik/cyrillic-600.css';
 import {TextEditor, type EditorState} from './Editor';
 import './stand.css';
 import {PanelCatalog} from './ToolPanels';
@@ -21,7 +37,7 @@ function Stand(){
  const [iconSize,setIconSize]=useState<16|20>(20);
  return <ConfigProvider theme={{token:{colorPrimary:'#1677ff',borderRadius:6,fontFamily:'Inter, sans-serif',fontSize:14}}}>
   <div className="stand">
-   <header><div className="brand"><span className="brand-mark">B2B</span><span className="header-divider"/><h1>Текстовый редактор</h1></div><span className="version">База компонента · 0.2</span></header>
+   <header><div className="brand"><span className="brand-mark">B2B</span><span className="header-divider"/><h1>Текстовый редактор</h1></div><span className="version">Локальная версия · 0.3</span></header>
    <main>
     <div className="settings" aria-label="Настройки стенда">
      <div className="stand-control"><span>Вид панели</span><Select aria-label="Вид панели" value={layout} onChange={setLayout} options={[{value:'One',label:'One · Полная'},{value:'Two',label:'Two · В две строки'},{value:'Three',label:'Three · С меню'}]}/></div>
@@ -34,7 +50,7 @@ function Stand(){
     <section className="workspace" aria-label="Предпросмотр редактора">
      <div className="workspace-heading"><span>Редактор</span><span>{layout} / {layout==='Two'?'High':density} / {tools}</span></div>
      <div className={`editor-stage stage-${layout}`}><TextEditor state={state==='Auto'?undefined:state} value={value} onChange={setValue} layout={layout} density={layout==='Two'?'High':density} tools={tools} iconSize={iconSize} toolbarOnly={toolbarOnly}/></div>
-     <div className="workspace-footer"><span>Окна открываются по нажатию на инструмент. Действия с текстом пока не подключены.</span><Button type="text" size="small" onClick={()=>setValue('')} disabled={!value}>Очистить текст</Button></div>
+     <div className="workspace-footer"><span>Выделите текст, чтобы изменить шрифт или размер. Тип текста меняет текущий текстовый блок. Остальные инструменты пока доступны для просмотра.</span><Button type="text" size="small" onClick={()=>setValue('')} disabled={!value}>Очистить текст</Button></div>
     </section>
     <PanelCatalog iconSize={iconSize}/>
     <div className="gallery-heading"><Button type="text" onClick={()=>setGallery(!gallery)} aria-expanded={gallery}>{gallery?'Скрыть состояния':'Показать все состояния'} <span aria-hidden="true">{gallery?'−':'+'}</span></Button><span>7 состояний</span></div>

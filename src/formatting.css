@@ -1,0 +1,23 @@
+.format-down{width:16px;height:16px;display:block;}
+.ed-select.ant-select:hover:not(.ant-select-disabled) .ant-select-selector{border-color:#4096ff!important;}
+.ed-select.ant-select-focused:not(.ant-select-disabled) .ant-select-selector,.ed-select.ant-select-open .ant-select-selector{border-color:#1677ff!important;box-shadow:0 0 0 2px rgba(5,145,255,.1)!important;}
+.format-option{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0;}
+.format-option>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.format-option>img{width:20px;height:20px;flex:none;}
+.format-options .ant-select-item{min-height:32px;padding:5px 12px;line-height:22px;}
+.format-options .ant-select-item-option-state{display:none;}
+.format-panel{min-height:136px;overflow:visible;}
+.format-panel-select{width:100%;}
+.format-trigger:not(:disabled){cursor:pointer;}
+.format-trigger:hover:not(:disabled),.format-trigger[aria-expanded=true]{background:#e6f4ff;outline:3px solid #e6f4ff;}
+.format-trigger:hover:not(:disabled) .ed-icon,.format-trigger[aria-expanded=true] .ed-icon{filter:invert(37%) sepia(99%) saturate(2966%) hue-rotate(207deg) brightness(102%) contrast(101%);}
+.format-trigger:hover:not(:disabled),.format-trigger[aria-expanded=true]{color:#1677ff;}
+.rich-input{min-height:98px;resize:vertical;overflow:auto;border:1px solid var(--ed-border);border-top:0;border-radius:0 0 6px 6px;padding:5px 11px;background:white;}
+.rich-input .tiptap{min-height:86px;outline:none;font:400 14px/22px Roboto,sans-serif;white-space:pre-wrap;overflow-wrap:anywhere;}
+.rich-input .tiptap p{margin:0;}
+.rich-input .tiptap h1,.rich-input .tiptap h2,.rich-input .tiptap h3,.rich-input .tiptap h4,.rich-input .tiptap h5{margin:0;font-weight:600;line-height:1.4;}
+.rich-input .tiptap h1{font-size:38px;}.rich-input .tiptap h2{font-size:30px;}.rich-input .tiptap h3{font-size:24px;}.rich-input .tiptap h4{font-size:20px;}.rich-input .tiptap h5{font-size:16px;}
+.rich-input .tiptap[data-empty=true]:before{content:attr(data-placeholder);color:rgba(0,0,0,.25);float:left;height:0;pointer-events:none;}
+.text-editor:focus-within .ed-toolbar,.text-editor:focus-within .rich-input{border-color:#1677ff;}
+.editor-state-Error .rich-input,.editor-state-Error:focus-within .rich-input,.editor-state-Error:focus-within .ed-toolbar{border-color:#ff4d4f;}
+.editor-state-Disabled .rich-input{background:rgba(0,0,0,.04);color:rgba(0,0,0,.25);cursor:not-allowed;}
