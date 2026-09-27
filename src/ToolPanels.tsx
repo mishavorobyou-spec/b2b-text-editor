@@ -1,5 +1,5 @@
 import React, {useId, useRef, useState, type ReactNode} from 'react';
-import {Button, Input, Segmented, Popover, Checkbox, Modal} from 'antd';
+import {Button, Input, Segmented, Popover, Checkbox, Modal, Tooltip} from 'antd';
 import {icons} from './all-assets';
 import {panelAssets} from './panel-assets';
 import './panels.css';
@@ -47,6 +47,10 @@ function SpacingPanel({tool,value,close,onApply}:{tool:'paragraph'|'lineHeight';
 
 const validUrl=(value:string)=>{try{const parsed=new URL(value);return parsed.protocol==='http:'||parsed.protocol==='https:';}catch{return false;}};
 const anchorId=(entry:AnchorEntry)=>entry.href.replace(/^#/, '');
+const linkHints={url:'Ссылка должна относится к текущему домену',anchor:'Добавьте # символ. Например: #name'} as const;
+function LinkHint({type}:{type:keyof typeof linkHints}){
+ return <Tooltip title={linkHints[type]}><span className="link-field-hint" tabIndex={0} role="img" aria-label={linkHints[type]}><Asset node="6716:89076" name="imgIconInfoCircleOutlined"/></span></Tooltip>;
+}
 
 function LibraryRows({entries,onChoose,onEdit,onDelete}:{entries:LinkEntry[];onChoose:(entry:LinkEntry)=>void;onEdit:(entry:LinkEntry)=>void;onDelete:(entry:LinkEntry)=>void}){
  if(!entries.length)return <div className="link-library-empty">Ничего не найдено</div>;
@@ -82,7 +86,7 @@ function LinkPanel({close,actions}:{close:()=>void;actions?:LinkPanelActions}){
   if(editing.type==='url')actions?.updateLinks(editing.href,next.href);
   setEditing(undefined);setSelectedId(next.id);setQuery(next.type==='url'?next.href:next.label);setLabel(next.label);
  };
- if(editing)return <div className="tool-panel link-panel"><button type="button" className="link-panel-back" onClick={()=>setEditing(undefined)}>‹ <span>{editing.type==='url'?'Редактирование url ссылки':'Редактирование якорной ссылки'}</span></button>{editing.type==='url'&&<PanelField label="Ссылка" required><Input value={editHref} status={editHref&&!validUrl(editHref)?'error':undefined} onChange={event=>setEditHref(event.target.value)} aria-label="Ссылка" suffix={<Asset node="6716:89076" name="imgIconInfoCircleOutlined"/>}/></PanelField>}<PanelField label={editing.type==='url'?'Текст ссылки':'Название'} required><Input.TextArea autoSize={{minRows:editing.type==='url'?2:1,maxRows:3}} value={editLabel} onChange={event=>setEditLabel(event.target.value)} aria-label={editing.type==='url'?'Текст ссылки':'Название'}/></PanelField><Footer close={()=>setEditing(undefined)} onAction={saveEdit} action="Сохранить" disabled={!editLabel.trim()||(editing.type==='url'&&!validUrl(editHref.trim()))}/></div>;
+ if(editing)return <div className="tool-panel link-panel"><button type="button" className="link-panel-back" onClick={()=>setEditing(undefined)}>‹ <span>{editing.type==='url'?'Редактирование url ссылки':'Редактирование якорной ссылки'}</span></button>{editing.type==='url'&&<PanelField label="Ссылка" required><Input value={editHref} status={editHref&&!validUrl(editHref)?'error':undefined} onChange={event=>setEditHref(event.target.value)} aria-label="Ссылка" suffix={<LinkHint type="url"/>}/></PanelField>}<PanelField label={editing.type==='url'?'Текст ссылки':'Название'} required><Input.TextArea autoSize={{minRows:editing.type==='url'?2:1,maxRows:3}} value={editLabel} onChange={event=>setEditLabel(event.target.value)} aria-label={editing.type==='url'?'Текст ссылки':'Название'}/></PanelField><Footer close={()=>setEditing(undefined)} onAction={saveEdit} action="Сохранить" disabled={!editLabel.trim()||(editing.type==='url'&&!validUrl(editHref.trim()))}/></div>;
  const canAdd=type==='url'?(resolved?Boolean(actions?.hasSelection):validUrl(typed)&&Boolean(label.trim())):Boolean(resolved&&actions?.hasSelection);
  const submit=()=>{
   if(type==='url'){
@@ -93,7 +97,7 @@ function LinkPanel({close,actions}:{close:()=>void;actions?:LinkPanelActions}){
   }
   if(resolved&&resolved.type==='anchor'&&actions?.hasSelection){actions.applyLink(resolved.href);close();}
  };
- return <div className="tool-panel link-panel"><h2>Добавить ссылку</h2><Segmented block value={type} options={[{label:'URL ссылка',value:'url'},{label:'Якорная ссылка',value:'anchor'}]} onChange={value=>{setType(value as 'url'|'anchor');setQuery('');setLabel(actions?.selectionText??'');setSelectedId(undefined);setShowList(false);}}/><PanelField label="Ссылка" required><div className="link-combobox"><Input value={query} status={typed&&type==='url'&&!resolved&&!validUrl(typed)?'error':undefined} aria-label="Ссылка" placeholder={type==='url'?'Введите URL ссылку':'Введите ссылку-якорь'} allowClear={{clearIcon:<img className="link-input-clear" src="/icons/input-clear.svg" alt=""/>}} suffix={<Asset node="6716:89076" name="imgIconInfoCircleOutlined"/>} onFocus={()=>setShowList(true)} onChange={event=>{setQuery(event.target.value);setSelectedId(undefined);setShowList(true);}} onPressEnter={canAdd?submit:undefined}/>{showList&&filtered.length>0&&<LibraryRows entries={filtered} onChoose={choose} onEdit={edit} onDelete={del}/>}</div></PanelField>{type==='url'&&!resolved&&typed&&<PanelField label="Текст ссылки" required><Input.TextArea autoSize={{minRows:2,maxRows:3}} value={label} status={!label.trim()?'error':undefined} placeholder="Введите" onChange={event=>setLabel(event.target.value)} aria-label="Текст ссылки"/></PanelField>}{type==='url'&&!resolved&&typed&&!validUrl(typed)&&<span className="link-error">Введите корректную http:// или https:// ссылку</span>}<Footer close={close} onAction={submit} action="Добавить" disabled={!canAdd}/></div>;
+ return <div className="tool-panel link-panel"><h2>Добавить ссылку</h2><Segmented block value={type} options={[{label:'URL ссылка',value:'url'},{label:'Якорная ссылка',value:'anchor'}]} onChange={value=>{setType(value as 'url'|'anchor');setQuery('');setLabel(actions?.selectionText??'');setSelectedId(undefined);setShowList(false);}}/><PanelField label="Ссылка" required><div className="link-combobox"><Input value={query} status={typed&&type==='url'&&!resolved&&!validUrl(typed)?'error':undefined} aria-label="Ссылка" placeholder={type==='url'?'Введите URL ссылку':'Введите ссылку-якорь'} allowClear={{clearIcon:<img className="link-input-clear" src="/icons/input-clear.svg" alt=""/>}} suffix={<LinkHint type={type}/>} onFocus={()=>setShowList(true)} onChange={event=>{setQuery(event.target.value);setSelectedId(undefined);setShowList(true);}} onPressEnter={canAdd?submit:undefined}/>{showList&&filtered.length>0&&<LibraryRows entries={filtered} onChoose={choose} onEdit={edit} onDelete={del}/>}</div></PanelField>{type==='url'&&!resolved&&typed&&<PanelField label="Текст ссылки" required><Input.TextArea autoSize={{minRows:2,maxRows:3}} value={label} status={!label.trim()?'error':undefined} placeholder="Введите" onChange={event=>setLabel(event.target.value)} aria-label="Текст ссылки"/></PanelField>}{type==='url'&&!resolved&&typed&&!validUrl(typed)&&<span className="link-error">Введите корректную http:// или https:// ссылку</span>}<Footer close={close} onAction={submit} action="Добавить" disabled={!canAdd}/></div>;
 }
 
 function AnchorPanel({close,actions}:{close:()=>void;actions?:LinkPanelActions}){
