@@ -19,14 +19,14 @@ export function PanelTrigger({tool,children,disabled=false,value,onApply,linkAct
  const holder=useRef<HTMLSpanElement>(null);
  const close=()=>{setOpen(false);holder.current?.querySelector<HTMLElement>('button,input')?.focus();};
  useEffect(()=>{
-  if(!open)return;
+  if(!open||tool==='link')return;
   const dismiss=(event:MouseEvent)=>{const target=event.target;if(target instanceof Element&&!holder.current?.contains(target)&&!target.closest(`.panel-${tool}`))setOpen(false);};
   const dismissFromEditor=()=>setOpen(false);
   document.addEventListener('click',dismiss,true);
   document.addEventListener('editor-dismiss-popovers',dismissFromEditor);
   return()=>{document.removeEventListener('click',dismiss,true);document.removeEventListener('editor-dismiss-popovers',dismissFromEditor);};
  },[open,tool]);
- return <Popover trigger="click" placement="bottom" arrow={{pointAtCenter:true}} open={open&&!disabled} onOpenChange={setOpen} destroyOnHidden overlayClassName={`editor-popover panel-${tool}`} content={<div role="dialog" aria-label={toolLabels[tool]} onKeyDown={e=>{if(e.key==='Escape'){e.stopPropagation();close();}}}><PanelContent key={`${tool}-${value??''}`} tool={tool} close={close} value={value} onApply={onApply} linkActions={linkActions}/></div>}><span ref={holder} className="panel-trigger" data-open={open&&!disabled} onKeyDown={e=>{if(e.key==='Escape'){e.stopPropagation();setOpen(false);}}}>{children}</span></Popover>;
+ return <Popover trigger="click" placement="bottom" arrow={{pointAtCenter:true}} open={open&&!disabled} onOpenChange={next=>{if(next||tool!=='link')setOpen(next);}} destroyOnHidden overlayClassName={`editor-popover panel-${tool}`} content={<div role="dialog" aria-label={toolLabels[tool]} onKeyDown={e=>{if(e.key==='Escape'){e.stopPropagation();close();}}}><PanelContent key={`${tool}-${value??''}`} tool={tool} close={close} value={value} onApply={onApply} linkActions={linkActions}/></div>}><span ref={holder} className="panel-trigger" data-open={open&&!disabled} onKeyDown={e=>{if(e.key==='Escape'){e.stopPropagation();setOpen(false);}}}>{children}</span></Popover>;
 }
 
 export function PanelField({label,placeholder='Введите',required=false,children}:{label?:string;placeholder?:string;required?:boolean;children?:ReactNode}){
