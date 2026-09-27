@@ -16,7 +16,9 @@
 .rich-input .tiptap{min-height:86px;outline:none;font:400 14px/22px Roboto,sans-serif;white-space:pre-wrap;overflow-wrap:anywhere;}
 .rich-input .tiptap ::selection{background:rgba(186,224,255,.72);color:inherit;}
 .rich-input .tiptap p{margin:0;}
-.rich-input .tiptap ol,.rich-input .tiptap ul{margin:0;padding-left:24px;}
+.rich-input .tiptap ol,.rich-input .tiptap ul{margin:0;padding-inline-start:22px;list-style-position:outside;}
+.rich-input .tiptap ol ol,.rich-input .tiptap ol ul,.rich-input .tiptap ul ol,.rich-input .tiptap ul ul{padding-inline-start:25px;}
+.rich-input .tiptap li{padding-inline-start:4px;}
 .rich-input .tiptap li>p{margin:0;}
 .rich-input .tiptap li::marker{color:rgba(0,0,0,.88);}
 .rich-input .tiptap h1,.rich-input .tiptap h2,.rich-input .tiptap h3,.rich-input .tiptap h4,.rich-input .tiptap h5{margin:0;font-weight:600;line-height:1.4;}

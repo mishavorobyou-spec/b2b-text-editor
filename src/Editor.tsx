@@ -20,8 +20,8 @@ const basic:[InlineTool,string,string,string,string?][]=[
   ['clear','IconClearOutlined','Очистка форматирования','746dc.svg'],
 ];
 const emptyInline:InlineFormat={bold:false,italic:false,underline:false,strike:false};
-const emptyParagraph:ParagraphFormat={alignment:'left',canIndent:false,canOutdent:false};
-const paragraphs:[ParagraphTool,string,string,string?][]=[['alignment','IconAlignLeftOutlined','Выравнивание','arrow'],['list','IconOrderedListOutlined','Список','arrow'],['indent','IconMenuUnfoldOutlined','Увеличить отступ'],['outdent','IconMenuFoldOutlined','Уменьшить отступ'],['lineSpacing','StateDefaultSizeDefault1','Межстрочное расстояние'],['paragraphSpacing','StateDefaultSizeDefault','Расстояние между абзацами']];
+const emptyParagraph:ParagraphFormat={alignment:'left',canShiftRight:false,canShiftLeft:false};
+const paragraphs:[ParagraphTool,string,string,string?][]=[['alignment','IconAlignLeftOutlined','Выравнивание','arrow'],['list','IconOrderedListOutlined','Список','arrow'],['shiftRight','IconMenuUnfoldOutlined','Сместить вправо'],['shiftLeft','IconMenuFoldOutlined','Сместить влево'],['lineSpacing','StateDefaultSizeDefault1','Межстрочное расстояние'],['paragraphSpacing','StateDefaultSizeDefault','Расстояние между абзацами']];
 const inserts=[['IconLinkOutlined','Ссылка'],['IconAnchor','Якорь'],['Icon','Таблица'],['IconPictureOutlined','Изображение'],['IconVideoCameraOutlined','Видео'],['IconCodeOutlined','Код'],['IconSpecialCharacterOutlined','Специальный символ']];
 const actions=[['IconReplaceSearchOutlined','Найти и заменить'],['IconCopyOutlined','Копировать'],['IconSnippetsOutlined','Вставить'],['IconScissorOutlined','Вырезать'],['IconActionBackOutlined','Отменить'],['IconActionForwardOutlined','Повторить']];
 
@@ -34,10 +34,11 @@ export function EditorToolbar({state='Default',layout='One',density='High',tools
     return <Tooltip key={id} title={label}><button type="button" className="ed-tool ed-basic-tool" aria-label={label} aria-pressed={id==='clear'?undefined:active} disabled={disabled} onMouseDown={e=>e.preventDefault()} onClick={()=>onInlineAction(id)}><span className="ed-basic-icon"><img className="ed-icon" src={active?`/icons/${hoverIcon}`:icons['img'+name]} alt=""/><img className="ed-basic-hover" src={`/icons/${active&&activeHoverIcon?activeHoverIcon:hoverIcon}`} alt=""/></span></button></Tooltip>;
   };
   const paragraphTool=([id,name,label,decoration]:typeof paragraphs[number])=>{
-    const button=<button type="button" className="ed-tool ed-paragraph-tool" aria-label={label} disabled={disabled} onMouseDown={e=>e.preventDefault()} onClick={id==='indent'||id==='outdent'?()=>onParagraphAction(id):undefined}><Icon name={name}/>{decoration==='arrow'&&<Icon name="IconCaretDownOutlined" small/>}</button>;
+    const button=<button type="button" className="ed-tool ed-paragraph-tool" aria-label={label} disabled={disabled} onMouseDown={e=>e.preventDefault()} onClick={id==='shiftRight'||id==='shiftLeft'?()=>onParagraphAction(id):undefined}><Icon name={name}/>{decoration==='arrow'&&<Icon name="IconCaretDownOutlined" small/>}</button>;
     const panel=id==='alignment'?'alignment':id==='list'?'list':id==='lineSpacing'?'paragraph':id==='paragraphSpacing'?'lineHeight':undefined;
     const value=id==='alignment'?paragraph.alignment:id==='list'?paragraph.list:id==='lineSpacing'?paragraph.lineSpacing:paragraph.paragraphSpacing;
-    return panel?<Tooltip key={id} title={label}><PanelTrigger tool={panel} disabled={disabled} value={value} onApply={selected=>onParagraphAction(id,selected)}>{button}</PanelTrigger></Tooltip>:<Tooltip key={id} title={label}>{button}</Tooltip>;
+    const trigger=<Tooltip title={label}>{button}</Tooltip>;
+    return panel?<PanelTrigger key={id} tool={panel} disabled={disabled} value={value} onApply={selected=>onParagraphAction(id,selected)}>{trigger}</PanelTrigger>:<React.Fragment key={id}>{trigger}</React.Fragment>;
   };
   const moreButton=<button type="button" className="ed-tool" aria-label="Дополнительные инструменты" disabled={disabled} onMouseDown={event=>event.preventDefault()}><Icon name="IconMoreOutlined"/></button>;
   return <div role="toolbar" aria-label="Форматирование текста" className={`ed-toolbar ed-${density} ed-tools-${tools} ed-state-${state} ed-layout-${layout} ed-icon-${iconSize}`}>
