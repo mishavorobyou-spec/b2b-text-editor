@@ -3,6 +3,7 @@ import {Extension, useEditor, useEditorState, type Editor} from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import {TextStyle, FontFamily, FontSize} from '@tiptap/extension-text-style';
 import {defaultFormat, type TextFormat, type FormatTool} from './TextFormatting';
+import {AnchorTag} from './AnchorTag';
 
 export type InlineFormat = {bold:boolean;italic:boolean;underline:boolean;strike:boolean};
 export type InlineTool = keyof InlineFormat|'clear';
@@ -23,7 +24,6 @@ const ParagraphStyles=Extension.create({
   textAlign:{default:null,parseHTML:element=>element.style.textAlign||null,renderHTML:attrs=>attrs.textAlign?{style:`text-align: ${attrs.textAlign}`}:{}} ,
   lineSpacing:{default:null,parseHTML:element=>element.style.lineHeight.replace('px','')||null,renderHTML:attrs=>attrs.lineSpacing?{style:`line-height: ${attrs.lineSpacing}px`}:{}} ,
   paragraphSpacing:{default:null,parseHTML:element=>element.style.marginBottom.replace('px','')||null,renderHTML:attrs=>attrs.paragraphSpacing?{style:`margin-bottom: ${attrs.paragraphSpacing}px`}:{}} ,
-  anchorId:{default:null,parseHTML:element=>element.getAttribute('id')||null,renderHTML:attrs=>attrs.anchorId?{id:attrs.anchorId,'data-editor-anchor':'true'}:{}} ,
  }}];},
 });
 
@@ -48,8 +48,14 @@ function replaceLinkHref(editor:Editor,oldHref:string,newHref:string){
 function removeAnchorTarget(editor:Editor,anchorId:string){
  let transaction=editor.state.tr;
  editor.state.doc.descendants((node,pos)=>{
-  if(node.isTextblock&&node.attrs.anchorId===anchorId)transaction=transaction.setNodeMarkup(pos,undefined,{...node.attrs,anchorId:null});
+  if(node.type.name==='anchorTag'&&node.attrs.anchorId===anchorId)transaction=transaction.delete(transaction.mapping.map(pos),transaction.mapping.map(pos+node.nodeSize));
  });
+ if(transaction.docChanged)editor.view.dispatch(transaction);
+}
+
+function renameAnchorTarget(editor:Editor,anchorId:string,label:string){
+ let transaction=editor.state.tr;
+ editor.state.doc.descendants((node,pos)=>{if(node.type.name==='anchorTag'&&node.attrs.anchorId===anchorId)transaction=transaction.setNodeMarkup(pos,undefined,{...node.attrs,label});});
  if(transaction.docChanged)editor.view.dispatch(transaction);
 }
 
@@ -84,7 +90,7 @@ function selectionParagraph(editor:Editor):ParagraphFormat{
 
 export function useTextDocument({value,onChange,disabled,placeholder,onFocus,onBlur}:{value:string;onChange:(v:string)=>void;disabled:boolean;placeholder:string;onFocus:()=>void;onBlur:()=>void}){
  const editor=useEditor({
-  extensions:[StarterKit.configure({heading:{levels:[1,2,3,4,5]},bold:{},italic:{},strike:{},underline:{},code:false,codeBlock:false,blockquote:false,bulletList:{},orderedList:{},listItem:{},listKeymap:{},horizontalRule:false,link:{openOnClick:false,autolink:false,linkOnPaste:false,HTMLAttributes:{rel:'noopener noreferrer'}},trailingNode:false}),ParagraphStyles,TextStyle,FontFamily,FontSize],
+  extensions:[StarterKit.configure({heading:{levels:[1,2,3,4,5]},bold:{},italic:{},strike:{},underline:{},code:false,codeBlock:false,blockquote:false,bulletList:{},orderedList:{},listItem:{},listKeymap:{},horizontalRule:false,link:{openOnClick:false,autolink:false,linkOnPaste:false,HTMLAttributes:{rel:'noopener noreferrer'}},trailingNode:false}),ParagraphStyles,AnchorTag,TextStyle,FontFamily,FontSize],
   content:plainDocument(value),editable:!disabled,
   editorProps:{attributes:state=>({role:'textbox','aria-label':'Текст редактора','aria-multiline':'true','aria-disabled':String(disabled),'data-placeholder':placeholder,'data-empty':String(!state.doc.textContent)})},
   onUpdate:({editor})=>onChange(editor.getText({blockSeparator:'\n'})),onFocus,onBlur,
@@ -123,20 +129,23 @@ export function useTextDocument({value,onChange,disabled,placeholder,onFocus,onB
   if(!editor||disabled||editor.state.selection.empty)return false;
   return editor.chain().focus().extendMarkRange('link').setLink({href,target:href.startsWith('#')?null:'_blank',rel:'noopener noreferrer'}).run();
  };
- const createAnchor=(anchorId:string)=>{
+ const createAnchor=(anchorId:string,label:string)=>{
   if(!editor||disabled)return false;
-  const {$from}=editor.state.selection;
-  let depth=$from.depth;
-  while(depth>0&&!$from.node(depth).isTextblock)depth--;
-  if(depth===0)return false;
-  const position=$from.before(depth);
-  const node=editor.state.doc.nodeAt(position);
-  if(!node)return false;
-  editor.view.dispatch(editor.state.tr.setNodeMarkup(position,undefined,{...node.attrs,anchorId}));
-  editor.commands.focus();
+  const type=editor.state.schema.nodes.anchorTag;
+  if(!type)return false;
+  const cursor=editor.state.selection.head;
+  let existing:{pos:number;size:number}|undefined;
+  editor.state.doc.descendants((node,pos)=>{if(!existing&&node.type===type&&node.attrs.anchorId===anchorId)existing={pos,size:node.nodeSize};});
+  let transaction=editor.state.tr;
+  if(existing)transaction=transaction.delete(existing.pos,existing.pos+existing.size);
+  const insertAt=transaction.mapping.map(cursor,1);
+  transaction=transaction.insert(insertAt,type.create({anchorId,label}));
+  editor.view.dispatch(transaction);
+  editor.commands.focus(insertAt+1);
   return true;
  };
  const deleteAnchor=(anchorId:string)=>{if(editor&&!disabled)removeAnchorTarget(editor,anchorId);};
+ const renameAnchor=(anchorId:string,label:string)=>{if(editor&&!disabled)renameAnchorTarget(editor,anchorId,label);};
  const updateLinks=(oldHref:string,newHref:string)=>{if(editor&&!disabled)replaceLinkHref(editor,oldHref,newHref);};
- return {editor,format,inline,paragraph,link,apply,applyInline,applyParagraph,applyLink,createAnchor,deleteAnchor,updateLinks};
+ return {editor,format,inline,paragraph,link,apply,applyInline,applyParagraph,applyLink,createAnchor,deleteAnchor,renameAnchor,updateLinks};
 }

@@ -22,6 +22,9 @@ function writeLibrary(entries:LinkEntry[]){
  window.dispatchEvent(new Event(changeEvent));
 }
 
+export function updateLinkEntry(entry:LinkEntry){const entries=readLibrary();writeLibrary(entries.some(item=>item.id===entry.id)?entries.map(item=>item.id===entry.id?entry:item):[...entries,entry]);}
+export function removeLinkEntry(id:string){writeLibrary(readLibrary().filter(item=>item.id!==id));}
+
 export function createEntryId(prefix:string){
  const suffix=globalThis.crypto?.randomUUID?.()??`${Date.now()}-${Math.random().toString(36).slice(2)}`;
  return `${prefix}-${suffix}`;
@@ -35,8 +38,8 @@ export function useLinkLibrary(){
   window.addEventListener(changeEvent,sync);
   return()=>{window.removeEventListener('storage',sync);window.removeEventListener(changeEvent,sync);};
  },[]);
- const add=useCallback((entry:LinkEntry)=>writeLibrary([...readLibrary().filter(item=>item.id!==entry.id),entry]),[]);
- const update=useCallback((entry:LinkEntry)=>writeLibrary(readLibrary().map(item=>item.id===entry.id?entry:item)),[]);
- const remove=useCallback((id:string)=>writeLibrary(readLibrary().filter(item=>item.id!==id)),[]);
+ const add=useCallback(updateLinkEntry,[]);
+ const update=useCallback(updateLinkEntry,[]);
+ const remove=useCallback(removeLinkEntry,[]);
  return {entries,add,update,remove};
 }
