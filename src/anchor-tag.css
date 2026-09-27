@@ -1,12 +1,14 @@
-.anchor-tag{display:inline-flex;align-items:center;gap:4px;max-width:100%;margin:0 2px;padding:1px 8px;border:1px solid #91caff;border-radius:4px;background:#e6f4ff;color:#1677ff;font:400 12px/20px Inter,sans-serif;vertical-align:baseline;white-space:nowrap;user-select:none;}
-.anchor-tag.is-selected{box-shadow:0 0 0 2px rgba(5,145,255,.1);}
-.anchor-drag-handle{display:flex;align-items:center;justify-content:center;width:14px;height:14px;cursor:grab;}
+.anchor-tag{box-sizing:border-box;display:inline-flex;align-items:center;gap:4px;height:24px;padding:1px 8px;border:1px solid #91caff;border-radius:4px;background:#e6f4ff;color:#1677ff;font:400 12px/20px Inter,sans-serif;vertical-align:middle;white-space:nowrap;user-select:none;}
+.anchor-drag-handle{display:flex;align-items:center;justify-content:center;width:14px;height:14px;color:#1677ff;cursor:grab;}
 .anchor-drag-handle:active{cursor:grabbing;}
-.anchor-drag-handle img{display:block;width:14px;height:14px;}
+.anchor-holder-icon{display:block;width:14px;height:14px;fill:currentColor;}
+.anchor-drag-handle:hover{color:#4096ff;}
 .anchor-tag-anchor{display:block;width:12px;height:12px;}
-.anchor-tag-label{max-width:180px;overflow:hidden;text-overflow:ellipsis;}
-.anchor-tag-action{display:flex;align-items:center;justify-content:center;width:12px;height:12px;padding:0;border:0;background:transparent;cursor:pointer;}
-.anchor-tag-action img{display:block;width:12px;height:12px;filter:invert(40%) sepia(97%) saturate(2724%) hue-rotate(201deg) brightness(101%) contrast(106%);}
+.anchor-tag-label{display:block;line-height:20px;}
+.anchor-tag-action{display:flex;align-items:center;justify-content:center;width:12px;height:12px;padding:0;border:0;background:transparent;color:#1677ff;cursor:pointer;}
+.anchor-tag-action>svg{display:block;width:12px;height:12px;fill:currentColor;}
+.anchor-edit-action:hover,.anchor-edit-action:focus-visible{color:#4096ff;}
+.anchor-delete-action:hover,.anchor-delete-action:focus-visible{color:#ff4d4f;}
 .anchor-edit-panel{box-sizing:border-box;width:340px;max-width:calc(100vw - 24px);padding:12px;display:flex;flex-direction:column;gap:12px;font-family:Inter,sans-serif;color:rgba(0,0,0,.88);}
 .anchor-edit-panel h2{margin:0;font-size:16px;line-height:24px;font-weight:600;}
 .anchor-edit-panel label{font-size:14px;line-height:22px;}
