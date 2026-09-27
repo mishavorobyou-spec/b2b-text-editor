@@ -10,6 +10,7 @@ export type TextAlignment = 'left'|'center'|'right'|'justify';
 export type ListStyle = 'ordered'|'bullet';
 export type ParagraphFormat = {alignment:TextAlignment;list?:ListStyle;lineSpacing?:string;paragraphSpacing?:string;canShiftRight:boolean;canShiftLeft:boolean};
 export type ParagraphTool = 'alignment'|'list'|'shiftRight'|'shiftLeft'|'lineSpacing'|'paragraphSpacing';
+export type LinkSelection={text:string;hasSelection:boolean};
 
 const headingSizes:Record<number,string>={1:'38',2:'30',3:'24',4:'20',5:'16'};
 const emptyInline:InlineFormat={bold:false,italic:false,underline:false,strike:false};
@@ -22,8 +23,35 @@ const ParagraphStyles=Extension.create({
   textAlign:{default:null,parseHTML:element=>element.style.textAlign||null,renderHTML:attrs=>attrs.textAlign?{style:`text-align: ${attrs.textAlign}`}:{}} ,
   lineSpacing:{default:null,parseHTML:element=>element.style.lineHeight.replace('px','')||null,renderHTML:attrs=>attrs.lineSpacing?{style:`line-height: ${attrs.lineSpacing}px`}:{}} ,
   paragraphSpacing:{default:null,parseHTML:element=>element.style.marginBottom.replace('px','')||null,renderHTML:attrs=>attrs.paragraphSpacing?{style:`margin-bottom: ${attrs.paragraphSpacing}px`}:{}} ,
+  anchorId:{default:null,parseHTML:element=>element.getAttribute('id')||null,renderHTML:attrs=>attrs.anchorId?{id:attrs.anchorId,'data-editor-anchor':'true'}:{}} ,
  }}];},
 });
+
+function linkSelection(editor:Editor):LinkSelection{
+ const {selection,doc}=editor.state;
+ return {hasSelection:!selection.empty,text:selection.empty?'':doc.textBetween(selection.from,selection.to,' ')};
+}
+
+function replaceLinkHref(editor:Editor,oldHref:string,newHref:string){
+ const linkType=editor.state.schema.marks.link;
+ if(!linkType||oldHref===newHref)return;
+ let transaction=editor.state.tr;
+ editor.state.doc.descendants((node,pos)=>{
+  if(!node.isText)return;
+  const mark=node.marks.find(item=>item.type===linkType&&item.attrs.href===oldHref);
+  if(!mark)return;
+  transaction=transaction.removeMark(pos,pos+node.nodeSize,mark).addMark(pos,pos+node.nodeSize,linkType.create({...mark.attrs,href:newHref,target:newHref.startsWith('#')?null:'_blank'}));
+ });
+ if(transaction.docChanged)editor.view.dispatch(transaction);
+}
+
+function removeAnchorTarget(editor:Editor,anchorId:string){
+ let transaction=editor.state.tr;
+ editor.state.doc.descendants((node,pos)=>{
+  if(node.isTextblock&&node.attrs.anchorId===anchorId)transaction=transaction.setNodeMarkup(pos,undefined,{...node.attrs,anchorId:null});
+ });
+ if(transaction.docChanged)editor.view.dispatch(transaction);
+}
 
 function selectionFormat(editor:Editor):TextFormat{
  const {selection,doc,storedMarks}=editor.state;
@@ -56,7 +84,7 @@ function selectionParagraph(editor:Editor):ParagraphFormat{
 
 export function useTextDocument({value,onChange,disabled,placeholder,onFocus,onBlur}:{value:string;onChange:(v:string)=>void;disabled:boolean;placeholder:string;onFocus:()=>void;onBlur:()=>void}){
  const editor=useEditor({
-  extensions:[StarterKit.configure({heading:{levels:[1,2,3,4,5]},bold:{},italic:{},strike:{},underline:{},code:false,codeBlock:false,blockquote:false,bulletList:{},orderedList:{},listItem:{},listKeymap:{},horizontalRule:false,link:false,trailingNode:false}),ParagraphStyles,TextStyle,FontFamily,FontSize],
+  extensions:[StarterKit.configure({heading:{levels:[1,2,3,4,5]},bold:{},italic:{},strike:{},underline:{},code:false,codeBlock:false,blockquote:false,bulletList:{},orderedList:{},listItem:{},listKeymap:{},horizontalRule:false,link:{openOnClick:false,autolink:false,linkOnPaste:false,HTMLAttributes:{rel:'noopener noreferrer'}},trailingNode:false}),ParagraphStyles,TextStyle,FontFamily,FontSize],
   content:plainDocument(value),editable:!disabled,
   editorProps:{attributes:state=>({role:'textbox','aria-label':'Текст редактора','aria-multiline':'true','aria-disabled':String(disabled),'data-placeholder':placeholder,'data-empty':String(!state.doc.textContent)})},
   onUpdate:({editor})=>onChange(editor.getText({blockSeparator:'\n'})),onFocus,onBlur,
@@ -64,6 +92,7 @@ export function useTextDocument({value,onChange,disabled,placeholder,onFocus,onB
  const format=useEditorState({editor,selector:({editor})=>editor?selectionFormat(editor):defaultFormat})??defaultFormat;
  const inline=useEditorState({editor,selector:({editor})=>editor?({bold:editor.isActive('bold'),italic:editor.isActive('italic'),underline:editor.isActive('underline'),strike:editor.isActive('strike')}):emptyInline})??emptyInline;
  const paragraph=useEditorState({editor,selector:({editor})=>editor?selectionParagraph(editor):emptyParagraph})??emptyParagraph;
+ const link=useEditorState({editor,selector:({editor})=>editor?linkSelection(editor):{text:'',hasSelection:false}})??{text:'',hasSelection:false};
  useEffect(()=>{if(editor&&editor.isEditable===disabled)editor.setEditable(!disabled,false);},[editor,disabled]);
  useEffect(()=>{if(editor&&value!==editor.getText({blockSeparator:'\n'}))editor.commands.setContent(plainDocument(value),{emitUpdate:false});},[editor,value]);
  const apply=(tool:FormatTool,value:string)=>{
@@ -90,5 +119,24 @@ export function useTextDocument({value,onChange,disabled,placeholder,onFocus,onB
   const attrs=tool==='alignment'?{textAlign:value}:tool==='lineSpacing'?{lineSpacing:value}:tool==='paragraphSpacing'?{paragraphSpacing:value}:{};
   editor.chain().focus().updateAttributes('paragraph',attrs).updateAttributes('heading',attrs).run();
  };
- return {editor,format,inline,paragraph,apply,applyInline,applyParagraph};
+ const applyLink=(href:string)=>{
+  if(!editor||disabled||editor.state.selection.empty)return false;
+  return editor.chain().focus().extendMarkRange('link').setLink({href,target:href.startsWith('#')?null:'_blank',rel:'noopener noreferrer'}).run();
+ };
+ const createAnchor=(anchorId:string)=>{
+  if(!editor||disabled)return false;
+  const {$from}=editor.state.selection;
+  let depth=$from.depth;
+  while(depth>0&&!$from.node(depth).isTextblock)depth--;
+  if(depth===0)return false;
+  const position=$from.before(depth);
+  const node=editor.state.doc.nodeAt(position);
+  if(!node)return false;
+  editor.view.dispatch(editor.state.tr.setNodeMarkup(position,undefined,{...node.attrs,anchorId}));
+  editor.commands.focus();
+  return true;
+ };
+ const deleteAnchor=(anchorId:string)=>{if(editor&&!disabled)removeAnchorTarget(editor,anchorId);};
+ const updateLinks=(oldHref:string,newHref:string)=>{if(editor&&!disabled)replaceLinkHref(editor,oldHref,newHref);};
+ return {editor,format,inline,paragraph,link,apply,applyInline,applyParagraph,applyLink,createAnchor,deleteAnchor,updateLinks};
 }
