@@ -26,6 +26,18 @@ import {PanelCatalog} from './ToolPanels';
 
 const states:EditorState[]=['Default','Hover','Focused','Typing','Filled','Disabled','Error'];
 const labels:Record<EditorState,string>={Default:'Обычное',Hover:'Наведение',Focused:'Фокус',Typing:'Ввод текста',Filled:'Заполнено',Disabled:'Недоступно',Error:'Ошибка'};
+const demoText=`Современный текстовый редактор помогает готовить материалы для карточек, лендингов и внутренних страниц. Автор может сосредоточиться на содержании, а инструменты оформления поддерживают единый стиль и понятную структуру документа.
+
+Перед публикацией рекомендуется проверить основные элементы:
+• заголовки отражают смысл разделов;
+• абзацы раскрывают одну мысль;
+• ссылки ведут на актуальные страницы;
+• списки используются для порядка или сравнения;
+• ключевые формулировки выделены последовательно.
+
+Работу удобно начинать с черновика: записать основные идеи, распределить их по разделам, затем уточнить формулировки и добавить ссылки. После этого текст стоит перечитать целиком, проверить факты, орфографию и отображение на разных размерах экрана.
+
+Финальная версия должна быть ясной, полезной и готовой к согласованию с командой.`;
 function Stand(){
  const [layout,setLayout]=useState<'One'|'Two'|'Three'>('One');
  const [density,setDensity]=useState<'High'|'Short'>('High');
@@ -50,7 +62,7 @@ function Stand(){
     <section className="workspace" aria-label="Предпросмотр редактора">
      <div className="workspace-heading"><span>Редактор</span><span>{layout} / {layout==='Two'?'High':density} / {tools}</span></div>
      <div className={`editor-stage stage-${layout}`}><TextEditor state={state==='Auto'?undefined:state} value={value} onChange={setValue} layout={layout} density={layout==='Two'?'High':density} tools={tools} iconSize={iconSize} toolbarOnly={toolbarOnly}/></div>
-     <div className="workspace-footer"><span>Выделите текст и примените оформление, выравнивание, список или интервалы. Без выделения команда действует в текущей позиции.</span><Button type="text" size="small" onClick={()=>setValue('')} disabled={!value}>Очистить текст</Button></div>
+     <div className="workspace-footer"><span>Выделите текст и примените оформление, выравнивание, список или интервалы. Без выделения команда действует в текущей позиции.</span><div className="workspace-actions"><Button type="primary" size="small" onClick={()=>setValue(demoText)}>Добавить текст-рыбу</Button><Button type="text" size="small" onClick={()=>setValue('')} disabled={!value}>Очистить текст</Button></div></div>
     </section>
     <PanelCatalog iconSize={iconSize}/>
     <div className="gallery-heading"><Button type="text" onClick={()=>setGallery(!gallery)} aria-expanded={gallery}>{gallery?'Скрыть состояния':'Показать все состояния'} <span aria-hidden="true">{gallery?'−':'+'}</span></Button><span>7 состояний</span></div>
