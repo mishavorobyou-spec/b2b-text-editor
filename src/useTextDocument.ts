@@ -1,5 +1,7 @@
 import {useEffect} from 'react';
 import {Extension, useEditor, useEditorState, type Editor} from '@tiptap/react';
+import {Plugin, PluginKey} from '@tiptap/pm/state';
+import {Decoration, DecorationSet} from '@tiptap/pm/view';
 import StarterKit from '@tiptap/starter-kit';
 import {TextStyle, FontFamily, FontSize} from '@tiptap/extension-text-style';
 import {defaultFormat, type TextFormat, type FormatTool} from './TextFormatting';
@@ -12,11 +14,80 @@ export type ListStyle = 'ordered'|'bullet';
 export type ParagraphFormat = {alignment:TextAlignment;list?:ListStyle;lineSpacing?:string;paragraphSpacing?:string;canShiftRight:boolean;canShiftLeft:boolean};
 export type ParagraphTool = 'alignment'|'list'|'shiftRight'|'shiftLeft'|'lineSpacing'|'paragraphSpacing';
 export type LinkSelection={text:string;hasSelection:boolean};
+export type SearchOptions={query:string;caseSensitive:boolean;regularExpression:boolean;ignoreDiacritics:boolean};
+export type SearchSnapshot={matches:number;activeIndex:number;error?:string};
+export type EditingAction='copy'|'paste'|'cut'|'undo'|'redo';
+type SearchMatch={from:number;to:number};
+
+const searchKey=new PluginKey<DecorationSet>('editorSearchHighlight');
+const SearchHighlight=Extension.create({
+ name:'searchHighlight',
+ addProseMirrorPlugins(){return [new Plugin<DecorationSet>({key:searchKey,state:{
+  init:()=>DecorationSet.empty,
+  apply(transaction,current){
+   const next=transaction.getMeta(searchKey) as {matches:SearchMatch[];activeIndex:number}|undefined;
+   if(next)return DecorationSet.create(transaction.doc,next.matches.map((match,index)=>Decoration.inline(match.from,match.to,{class:index===next.activeIndex?'search-match search-match-active':'search-match'})));
+   return current.map(transaction.mapping,transaction.doc);
+  },
+ },props:{decorations:state=>searchKey.getState(state)??DecorationSet.empty}})];},
+});
 
 const headingSizes:Record<number,string>={1:'38',2:'30',3:'24',4:'20',5:'16'};
 const emptyInline:InlineFormat={bold:false,italic:false,underline:false,strike:false};
 const emptyParagraph:ParagraphFormat={alignment:'left',canShiftRight:false,canShiftLeft:false};
 const plainDocument=(value:string)=>({type:'doc',content:value.split('\n').map(text=>({type:'paragraph',content:text?[{type:'text',text}]:[]}))});
+
+function foldText(value:string,options:SearchOptions){
+ let result='',offset=0;
+ const starts:number[]=[],ends:number[]=[];
+ for(const character of value){
+  const source=options.ignoreDiacritics?character.normalize('NFD').replace(/[\u0300-\u036f]/g,''):character;
+  const folded=options.caseSensitive?source:source.toLocaleLowerCase();
+  for(let index=0;index<folded.length;index++){starts.push(offset);ends.push(offset+character.length);}
+  result+=folded;offset+=character.length;
+ }
+ return {text:result,starts,ends};
+}
+
+function findMatches(editor:Editor,options:SearchOptions):{matches:SearchMatch[];error?:string}{
+ if(!options.query)return {matches:[]};
+ const foldedQuery=foldText(options.query,options).text;
+ let expression:RegExp;
+ try{expression=new RegExp(options.regularExpression?foldedQuery:foldedQuery.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'g');}
+ catch{return {matches:[],error:'Некорректное регулярное выражение'};}
+ const matches:SearchMatch[]=[];
+ editor.state.doc.descendants((node,pos)=>{
+  if(!node.isTextblock)return;
+  let blockText='';
+  const starts:number[]=[],ends:number[]=[];
+  node.descendants((child,childPos)=>{
+   if(child.isText&&child.text){
+    let offset=0;
+    for(const character of child.text){
+     blockText+=character;
+     for(let index=0;index<character.length;index++){starts.push(pos+1+childPos+offset);ends.push(pos+1+childPos+offset+character.length);}
+     offset+=character.length;
+    }
+   }else if(child.isInline&&child.isAtom){
+    blockText+='\uFFFC';starts.push(pos+1+childPos);ends.push(pos+1+childPos+child.nodeSize);
+   }
+  });
+  const folded=foldText(blockText,options);
+  expression.lastIndex=0;
+  let match:RegExpExecArray|null;
+  while((match=expression.exec(folded.text))){
+   if(match[0].length){
+    const start=folded.starts[match.index],end=folded.ends[match.index+match[0].length-1];
+    if(start!==undefined&&end!==undefined&&starts[start]!==undefined&&ends[end-1]!==undefined)matches.push({from:starts[start],to:ends[end-1]});
+   }
+   if(!match[0].length)expression.lastIndex++;
+  }
+  return false;
+ });
+ return {matches};
+}
+
+function showMatches(editor:Editor,matches:SearchMatch[],activeIndex:number){editor.view.dispatch(editor.state.tr.setMeta(searchKey,{matches,activeIndex}));}
 
 const ParagraphStyles=Extension.create({
  name:'paragraphStyles',
@@ -90,7 +161,7 @@ function selectionParagraph(editor:Editor):ParagraphFormat{
 
 export function useTextDocument({value,onChange,disabled,placeholder,onFocus,onBlur}:{value:string;onChange:(v:string)=>void;disabled:boolean;placeholder:string;onFocus:()=>void;onBlur:()=>void}){
  const editor=useEditor({
-  extensions:[StarterKit.configure({heading:{levels:[1,2,3,4,5]},bold:{},italic:{},strike:{},underline:{},code:false,codeBlock:false,blockquote:false,bulletList:{},orderedList:{},listItem:{},listKeymap:{},horizontalRule:false,link:{openOnClick:false,autolink:false,linkOnPaste:false,HTMLAttributes:{rel:'noopener noreferrer'}},trailingNode:false}),ParagraphStyles,AnchorTag,TextStyle,FontFamily,FontSize],
+  extensions:[StarterKit.configure({heading:{levels:[1,2,3,4,5]},bold:{},italic:{},strike:{},underline:{},code:false,codeBlock:false,blockquote:false,bulletList:{},orderedList:{},listItem:{},listKeymap:{},horizontalRule:false,link:{openOnClick:false,autolink:false,linkOnPaste:false,HTMLAttributes:{rel:'noopener noreferrer'}},trailingNode:false}),ParagraphStyles,SearchHighlight,AnchorTag,TextStyle,FontFamily,FontSize],
   content:plainDocument(value),editable:!disabled,
   editorProps:{attributes:state=>({role:'textbox','aria-label':'Текст редактора','aria-multiline':'true','aria-disabled':String(disabled),'data-placeholder':placeholder,'data-empty':String(!state.doc.textContent)})},
   onUpdate:({editor})=>onChange(editor.getText({blockSeparator:'\n'})),onFocus,onBlur,
@@ -147,5 +218,42 @@ export function useTextDocument({value,onChange,disabled,placeholder,onFocus,onB
  const deleteAnchor=(anchorId:string)=>{if(editor&&!disabled)removeAnchorTarget(editor,anchorId);};
  const renameAnchor=(anchorId:string,label:string)=>{if(editor&&!disabled)renameAnchorTarget(editor,anchorId,label);};
  const updateLinks=(oldHref:string,newHref:string)=>{if(editor&&!disabled)replaceLinkHref(editor,oldHref,newHref);};
- return {editor,format,inline,paragraph,link,apply,applyInline,applyParagraph,applyLink,createAnchor,deleteAnchor,renameAnchor,updateLinks};
+ const search=(options:SearchOptions,requestedIndex=0):SearchSnapshot=>{
+  if(!editor)return {matches:0,activeIndex:0};
+  const result=findMatches(editor,options);
+  const activeIndex=result.matches.length?((requestedIndex%result.matches.length)+result.matches.length)%result.matches.length:0;
+  showMatches(editor,result.matches,activeIndex);
+  return {matches:result.matches.length,activeIndex,error:result.error};
+ };
+ const replaceSearch=(options:SearchOptions,replacement:string,activeIndex:number,all=false):SearchSnapshot=>{
+  if(!editor||disabled)return {matches:0,activeIndex:0};
+  const found=findMatches(editor,options);
+  if(found.error||!found.matches.length){showMatches(editor,[],0);return {matches:0,activeIndex:0,error:found.error};}
+  const targets=all?[...found.matches].reverse():[found.matches[Math.min(activeIndex,found.matches.length-1)]];
+  let transaction=editor.state.tr;
+  for(const match of targets)transaction=transaction.insertText(replacement,match.from,match.to);
+  editor.view.dispatch(transaction);
+  return search(options,all?0:activeIndex);
+ };
+ const clearSearch=()=>{if(editor)showMatches(editor,[],0);};
+ const editingAction=async(action:EditingAction)=>{
+  if(!editor||disabled)return false;
+  if(action==='undo')return editor.chain().focus().undo().run();
+  if(action==='redo')return editor.chain().focus().redo().run();
+  if(action==='paste'){
+   try{const text=await navigator.clipboard.readText();return text?editor.chain().focus().insertContent(text).run():false;}catch{return false;}
+  }
+  const {from,to,empty}=editor.state.selection;
+  if(empty)return false;
+  const text=editor.state.doc.textBetween(from,to,'\n');
+  try{
+   await navigator.clipboard.writeText(text);
+   if(action==='cut')editor.chain().focus().deleteSelection().run();
+   return true;
+  }catch{
+   editor.commands.focus();
+   return document.execCommand(action);
+  }
+ };
+ return {editor,format,inline,paragraph,link,apply,applyInline,applyParagraph,applyLink,createAnchor,deleteAnchor,renameAnchor,updateLinks,search,replaceSearch,clearSearch,editingAction};
 }

@@ -5,7 +5,7 @@ import {panelAssets} from './panel-assets';
 import './panels.css';
 import './link-tools.css';
 import {FormatPanel, defaultFormat, type FormatTool} from './TextFormatting';
-import type {InlineFormat, InlineTool, ParagraphFormat, ParagraphTool} from './useTextDocument';
+import type {InlineFormat, InlineTool, ParagraphFormat, ParagraphTool, SearchOptions, SearchSnapshot} from './useTextDocument';
 import {createEntryId, useLinkLibrary, type AnchorEntry, type LinkEntry, type UrlLinkEntry} from './linkLibrary';
 
 export type ToolId = 'textType'|'font'|'fontSize'|'color'|'highlight'|'cellColor'|'fillColor'|'alignment'|'list'|'paragraph'|'lineHeight'|'link'|'anchor'|'table'|'image'|'video'|'symbol'|'search'|'more';
@@ -13,8 +13,9 @@ export const toolLabels:Record<ToolId,string>={textType:'Тип текста',fo
 export const panelForIcon:Record<string,ToolId>={IconTextTypeOutlined:'textType',IconFontSizeOutlined:'font',IconFontColorsOutlined:'color',IconHighlightOutlined:'highlight',IconFormatPainterOutlined:'cellColor',IconBgColorsOutlined:'fillColor',IconAlignLeftOutlined:'alignment',IconOrderedListOutlined:'list',StateDefaultSizeDefault1:'paragraph',StateDefaultSizeDefault:'lineHeight',IconLinkOutlined:'link',IconAnchor:'anchor',Icon:'table',IconPictureOutlined:'image',IconVideoCameraOutlined:'video',IconSpecialCharacterOutlined:'symbol',IconReplaceSearchOutlined:'search',IconMoreOutlined:'more'};
 
 export type LinkPanelActions={selectionText:string;hasSelection:boolean;applyLink:(href:string)=>void;createAnchor:(anchorId:string,label:string)=>void;deleteAnchor:(anchorId:string)=>void;renameAnchor:(anchorId:string,label:string)=>void;updateLinks:(oldHref:string,newHref:string)=>void};
+export type SearchPanelActions={search:(options:SearchOptions,index?:number)=>SearchSnapshot;replace:(options:SearchOptions,replacement:string,index:number,all?:boolean)=>SearchSnapshot;clear:()=>void};
 
-export function PanelTrigger({tool,children,disabled=false,value,onApply,linkActions}:{tool:ToolId;children:ReactNode;disabled?:boolean;value?:string;onApply?:(value:string)=>void;linkActions?:LinkPanelActions}){
+export function PanelTrigger({tool,children,disabled=false,value,onApply,linkActions,searchActions}:{tool:ToolId;children:ReactNode;disabled?:boolean;value?:string;onApply?:(value:string)=>void;linkActions?:LinkPanelActions;searchActions?:SearchPanelActions}){
  const [open,setOpen]=useState(false);
  const holder=useRef<HTMLSpanElement>(null);
  const close=()=>{setOpen(false);holder.current?.querySelector<HTMLElement>('button,input')?.focus();};
@@ -26,7 +27,7 @@ export function PanelTrigger({tool,children,disabled=false,value,onApply,linkAct
   document.addEventListener('editor-dismiss-popovers',dismissFromEditor);
   return()=>{document.removeEventListener('click',dismiss,true);document.removeEventListener('editor-dismiss-popovers',dismissFromEditor);};
  },[open,tool]);
- return <Popover trigger="click" placement="bottom" arrow={{pointAtCenter:true}} open={open&&!disabled} onOpenChange={next=>{if(next||tool!=='link')setOpen(next);}} destroyOnHidden overlayClassName={`editor-popover panel-${tool}`} content={<div role="dialog" aria-label={toolLabels[tool]} onKeyDown={e=>{if(e.key==='Escape'){e.stopPropagation();close();}}}><PanelContent key={`${tool}-${value??''}`} tool={tool} close={close} value={value} onApply={onApply} linkActions={linkActions}/></div>}><span ref={holder} className="panel-trigger" data-open={open&&!disabled} onKeyDown={e=>{if(e.key==='Escape'){e.stopPropagation();setOpen(false);}}}>{children}</span></Popover>;
+ return <Popover trigger="click" placement="bottom" arrow={{pointAtCenter:true}} open={open&&!disabled} onOpenChange={next=>{if(next||tool!=='link')setOpen(next);}} destroyOnHidden overlayClassName={`editor-popover panel-${tool}`} content={<div role="dialog" aria-label={toolLabels[tool]} onKeyDown={e=>{if(e.key==='Escape'){e.stopPropagation();close();}}}><PanelContent key={`${tool}-${value??''}`} tool={tool} close={close} value={value} onApply={onApply} linkActions={linkActions} searchActions={searchActions}/></div>}><span ref={holder} className="panel-trigger" data-open={open&&!disabled} onKeyDown={e=>{if(e.key==='Escape'){e.stopPropagation();setOpen(false);}}}>{children}</span></Popover>;
 }
 
 export function PanelField({label,placeholder='Введите',required=false,children}:{label?:string;placeholder?:string;required?:boolean;children?:ReactNode}){
@@ -157,7 +158,29 @@ function CompactMain({inline,paragraph,onInline,onParagraph}:{inline:InlineForma
  return <div className="tool-panel menu-panel more-panel compact-tools"><div className="panel-menu">{inlineRows.map(([id,icon,label])=><button type="button" key={id} aria-pressed={id==='clear'?undefined:inline[id]} className={id!=='clear'&&inline[id]?'is-active':''} onMouseDown={event=>event.preventDefault()} onClick={()=>onInline(id)}><img className="panel-icon" src={icons['img'+icon]} alt=""/><span>{label}</span></button>)}{paragraphRows.map(([id,icon,label,next],index)=><button type="button" key={id} className={index===0?'menu-divider':''} onMouseDown={event=>event.preventDefault()} onClick={()=>onParagraph(id,next)}><img className="panel-icon" src={icons['img'+icon]} alt=""/><span>{label}</span>{next&&<span className="compact-chevron" aria-hidden="true">›</span>}</button>)}</div></div>;
 }
 function MediaTools({video=false}:{video?:boolean}){const node=video?'6716:89115':'6716:89102';return <div className="media-tools">{['imgIconSplitTextOutlined','imgIconInTextOutlined','imgIconMoveTextOutlined','divider','imgIconPositionLeftOutlined','imgIconPositionCenterOutlined','imgIconPositionRightOutlined'].map((name,i)=>name==='divider'?<span className="media-divider" key={name}/>:<button type="button" key={name} aria-label={['Разрыв текста','В тексте','Обтекание','','Слева','По центру','Справа'][i]}><Asset node={node} name={name}/></button>)}</div>;}
-export function PanelContent({tool,close,value,onApply,linkActions}:{tool:ToolId;close:()=>void;value?:string;onApply?:(value:string)=>void;linkActions?:LinkPanelActions}){
+const regexHint='Позволяют задавать шаблон поиска, например, искать любое число (\\d+) или слово, начинающееся с заглавной буквы ([A-Z]\\w*)';
+const diacriticsHint='Поиск не будет учитывать надстрочные и подстрочные знаки, например é = e, ñ = n.';
+function SearchPanel({actions}:{actions?:SearchPanelActions}){
+ const [query,setQuery]=useState(''),[replacement,setReplacement]=useState('');
+ const [caseSensitive,setCaseSensitive]=useState(false),[regularExpression,setRegularExpression]=useState(false),[ignoreDiacritics,setIgnoreDiacritics]=useState(false);
+ const [snapshot,setSnapshot]=useState<SearchSnapshot>({matches:0,activeIndex:0});
+ const options:SearchOptions={query,caseSensitive,regularExpression,ignoreDiacritics};
+ const run=(next:SearchOptions,index=0)=>setSnapshot(actions?.search(next,index)??{matches:0,activeIndex:0});
+ const changeQuery=(value:string)=>{setQuery(value);run({...options,query:value});};
+ const toggle=(field:'caseSensitive'|'regularExpression'|'ignoreDiacritics',checked:boolean)=>{
+  const next={...options,[field]:checked};
+  if(field==='caseSensitive')setCaseSensitive(checked);
+  if(field==='regularExpression')setRegularExpression(checked);
+  if(field==='ignoreDiacritics')setIgnoreDiacritics(checked);
+  run(next);
+ };
+ const move=(step:number)=>run(options,snapshot.activeIndex+step);
+ const replace=(all=false)=>setSnapshot(actions?.replace(options,replacement,snapshot.activeIndex,all)??{matches:0,activeIndex:0});
+ const actionsRef=useRef(actions);actionsRef.current=actions;
+ useEffect(()=>()=>actionsRef.current?.clear(),[]);
+ return <div className="tool-panel search-panel"><div className="panel-title-row"><h2>Найти и заменить</h2><div className="search-count"><span>{snapshot.matches?snapshot.activeIndex+1:0}/{snapshot.matches}</span><button type="button" aria-label="Предыдущее совпадение" disabled={!snapshot.matches} onClick={()=>move(-1)}><Asset node="6716:89141" name="imgIconLeftOutlined"/></button><button type="button" aria-label="Следующее совпадение" disabled={!snapshot.matches} onClick={()=>move(1)}><Asset node="6716:89141" name="imgIconRightOutlined"/></button></div></div><PanelField label="Найти"><Input value={query} status={snapshot.error?'error':undefined} maxLength={40} showCount aria-label="Найти" placeholder="Текст для поиска" allowClear onChange={event=>changeQuery(event.target.value)}/></PanelField>{snapshot.error&&<span className="search-error">{snapshot.error}</span>}<PanelField label="Заменить"><Input value={replacement} maxLength={40} showCount aria-label="Заменить" placeholder="Текст для замены" allowClear onChange={event=>setReplacement(event.target.value)}/></PanelField><Checkbox checked={caseSensitive} onChange={event=>toggle('caseSensitive',event.target.checked)}>Учитывать регистр</Checkbox><Checkbox checked={regularExpression} onChange={event=>toggle('regularExpression',event.target.checked)}>Использовать регулярные выражения <Tooltip title={regexHint}><span className="search-help" tabIndex={0} aria-label={regexHint}><Asset node="6716:89141" name="imgIconQuestionCircleOutlined"/></span></Tooltip></Checkbox><Checkbox checked={ignoreDiacritics} onChange={event=>toggle('ignoreDiacritics',event.target.checked)}>Игнорировать диакритические знаки в латинице <Tooltip title={diacriticsHint}><span className="search-help" tabIndex={0} aria-label={diacriticsHint}><Asset node="6716:89141" name="imgIconQuestionCircleOutlined"/></span></Tooltip></Checkbox><div className="panel-footer"><Button disabled={!snapshot.matches} onClick={()=>replace(true)}>Заменить все</Button><Button type="primary" disabled={!snapshot.matches} onClick={()=>replace()}>Заменить</Button></div></div>;
+}
+export function PanelContent({tool,close,value,onApply,linkActions,searchActions}:{tool:ToolId;close:()=>void;value?:string;onApply?:(value:string)=>void;linkActions?:LinkPanelActions;searchActions?:SearchPanelActions}){
  if(tool==='textType'||tool==='font'||tool==='fontSize')return <CatalogFormatPanel tool={tool} close={close}/>;
  if(tool==='link')return <LinkPanel close={close} actions={linkActions}/>;
  if(tool==='paragraph'||tool==='lineHeight')return <SpacingPanel tool={tool} value={value} close={close} onApply={onApply}/>;
@@ -167,7 +190,7 @@ export function PanelContent({tool,close,value,onApply,linkActions}:{tool:ToolId
  if(tool==='table')return <div className="tool-panel"><h2>Таблица</h2><span>Действия</span><div className="table-actions">{['imgIconInsertRowAboveOutlined','imgIconGroupOutlined','imgIconUngroupOutlined','imgIconDeleteOutlined'].map((name,i)=><Button key={name} aria-label={['Действия с таблицей','Объединить ячейки','Разделить ячейки','Удалить'][i]}><Asset node="6716:89089" name={name}/>{(i===0||i===3)&&<Asset node="6716:89089" name="imgIconCaretDownOutlined" className="tiny-icon"/>}</Button>)}</div><PanelField label="Столбцы" required/><PanelField label="Строки" required/><Checkbox>Добавить строчку заголовка</Checkbox><Footer close={close} action="Добавить"/></div>;
  if(tool==='image'||tool==='video'){const video=tool==='video';return <div className="tool-panel"><h2>{video?'Настройка видео':'Настройка изображения'}</h2><MediaTools video={video}/>{!video&&<Button className="upload-placeholder"><Asset node="6716:89102" name="imgIconUploadOutlined"/>Загрузить изображение</Button>}<PanelField label="Высота"><Input aria-label="Высота" placeholder="Введите" addonAfter="px"/></PanelField><PanelField label="Ширина"><Input aria-label="Ширина" placeholder="Введите" addonAfter="px"/></PanelField><PanelField label={video?'Ссылка на видео':'Ссылка для перехода по изображению'} placeholder={video?'Введите значение':'Введите'} required={video}/><Checkbox>Использовать оригинальный размер {video?'видео':'изображения'}</Checkbox><Footer close={close} action="Добавить"/></div>;}
  if(tool==='symbol')return <div className="tool-panel"><h2>Спец символы</h2><div className="symbol-grid">{Array.from('‐‑‒–—―‘’‚‛“”„‟¡¿§©®™†‡•‣․‥…‧‰‱′″‴‵‶‸‹›´µ¶·«»¼½¾℃№ﬀﬁﬂﬃﬄﬅﬆ←↑→↓↔↕↖↗↘↙⁰¹²³⁴⁵⁶⁷⁸⁹⁻⁼⁽⁺⁾ⁿⁱ').map((s,i)=><button type="button" key={i} aria-label={`Символ ${s}`}>{s}</button>)}</div></div>;
- if(tool==='search')return <div className="tool-panel"><div className="panel-title-row"><h2>Найти и заменить</h2><div className="search-count"><span>0/0</span><button type="button" aria-label="Предыдущее совпадение"><Asset node="6716:89141" name="imgIconLeftOutlined"/></button><button type="button" aria-label="Следующее совпадение"><Asset node="6716:89141" name="imgIconRightOutlined"/></button></div></div><PanelField label="Найти" placeholder="Текст для поиска"/><PanelField label="Заменить" placeholder="Текст для замены"/><Checkbox>Учитывать регистр</Checkbox><Checkbox>Использовать регулярные выражения</Checkbox><Checkbox>Игнорировать диакритические знаки в латинице</Checkbox><div className="panel-footer"><Button>Заменить все</Button><Button type="primary">Заменить</Button></div></div>;
+ if(tool==='search')return <SearchPanel actions={searchActions}/>;
  return null;
 }
 

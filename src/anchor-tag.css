@@ -2,12 +2,12 @@
 .anchor-drag-handle{display:flex;align-items:center;justify-content:center;width:14px;height:14px;color:#1677ff;cursor:grab;}
 .anchor-drag-handle:active{cursor:grabbing;}
 .anchor-holder-icon{display:block;width:14px;height:14px;fill:currentColor;}
-.anchor-drag-handle:hover{color:#4096ff;}
+.anchor-drag-handle:hover{color:rgba(0,0,0,.88);}
 .anchor-tag-anchor{display:block;width:12px;height:12px;}
 .anchor-tag-label{display:block;line-height:20px;}
 .anchor-tag-action{display:flex;align-items:center;justify-content:center;width:12px;height:12px;padding:0;border:0;background:transparent;color:#1677ff;cursor:pointer;}
 .anchor-tag-action>svg{display:block;width:12px;height:12px;fill:currentColor;}
-.anchor-edit-action:hover,.anchor-edit-action:focus-visible{color:#4096ff;}
+.anchor-edit-action:hover,.anchor-edit-action:focus-visible{color:rgba(0,0,0,.88);}
 .anchor-delete-action:hover,.anchor-delete-action:focus-visible{color:#ff4d4f;}
 .anchor-edit-panel{box-sizing:border-box;width:340px;max-width:calc(100vw - 24px);padding:12px;display:flex;flex-direction:column;gap:12px;font-family:Inter,sans-serif;color:rgba(0,0,0,.88);}
 .anchor-edit-panel h2{margin:0;font-size:16px;line-height:24px;font-weight:600;}
