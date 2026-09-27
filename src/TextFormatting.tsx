@@ -27,6 +27,14 @@ export function FormattingControls({compact,disabled,format,onChange}:{compact:b
  const [open,setOpen]=useState<FormatTool|null>(null);
  const triggers=useRef<Partial<Record<FormatTool,HTMLButtonElement|null>>>({});
  useEffect(()=>{if(disabled)setOpen(null);},[disabled]);
+ useEffect(()=>{
+  if(!open)return;
+  const dismiss=(event:MouseEvent)=>{const target=event.target;if(target instanceof Element&&!triggers.current[open]?.contains(target)&&!target.closest('.formatting-popover'))setOpen(null);};
+  const dismissFromEditor=()=>setOpen(null);
+  document.addEventListener('click',dismiss,true);
+  document.addEventListener('editor-dismiss-popovers',dismissFromEditor);
+  return()=>{document.removeEventListener('click',dismiss,true);document.removeEventListener('editor-dismiss-popovers',dismissFromEditor);};
+ },[open]);
  return <>{(Object.keys(formatLabels) as FormatTool[]).map(tool=>compact?<Popover key={tool} trigger="click" placement="bottom" arrow={{pointAtCenter:true}} open={open===tool&&!disabled} onOpenChange={v=>setOpen(v?tool:null)} destroyOnHidden overlayClassName="editor-popover formatting-popover" content={<FormatPanel key={`${tool}-${open===tool}`} tool={tool} value={format[tool]} onApply={v=>{setOpen(null);onChange(tool,v);}} onCancel={()=>{setOpen(null);triggers.current[tool]?.focus();}}/>}>
   <Tooltip title={open===tool?null:formatLabels[tool]}><button ref={el=>{triggers.current[tool]=el;}} type="button" disabled={disabled} aria-label={formatLabels[tool]} aria-haspopup="dialog" aria-expanded={open===tool&&!disabled} className={`ed-tool format-trigger ${tool==='fontSize'?'ed-size':''}`} onKeyDown={e=>{if(e.key==='Escape')setOpen(null);}}>{tool==='fontSize'?<span>{format.fontSize??'—'}</span>:<img className="ed-icon" src={tool==='textType'?'/icons/0cc42.svg':'/icons/50951.svg'} alt=""/>}<img className="ed-caret" src="/icons/1decc.svg" alt=""/></button></Tooltip>
  </Popover>:<FormatSelect key={tool} tool={tool} small value={format[tool]} onChange={v=>onChange(tool,v)} disabled={disabled}/>)}</>;

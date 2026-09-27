@@ -1,4 +1,4 @@
-import React, {useId, useRef, useState, type ReactNode} from 'react';
+import React, {useEffect, useId, useRef, useState, type ReactNode} from 'react';
 import {Button, Input, Segmented, Popover, Checkbox, Modal, Tooltip} from 'antd';
 import {icons} from './all-assets';
 import {panelAssets} from './panel-assets';
@@ -18,6 +18,14 @@ export function PanelTrigger({tool,children,disabled=false,value,onApply,linkAct
  const [open,setOpen]=useState(false);
  const holder=useRef<HTMLSpanElement>(null);
  const close=()=>{setOpen(false);holder.current?.querySelector<HTMLElement>('button,input')?.focus();};
+ useEffect(()=>{
+  if(!open)return;
+  const dismiss=(event:MouseEvent)=>{const target=event.target;if(target instanceof Element&&!holder.current?.contains(target)&&!target.closest(`.panel-${tool}`))setOpen(false);};
+  const dismissFromEditor=()=>setOpen(false);
+  document.addEventListener('click',dismiss,true);
+  document.addEventListener('editor-dismiss-popovers',dismissFromEditor);
+  return()=>{document.removeEventListener('click',dismiss,true);document.removeEventListener('editor-dismiss-popovers',dismissFromEditor);};
+ },[open,tool]);
  return <Popover trigger="click" placement="bottom" arrow={{pointAtCenter:true}} open={open&&!disabled} onOpenChange={setOpen} destroyOnHidden overlayClassName={`editor-popover panel-${tool}`} content={<div role="dialog" aria-label={toolLabels[tool]} onKeyDown={e=>{if(e.key==='Escape'){e.stopPropagation();close();}}}><PanelContent key={`${tool}-${value??''}`} tool={tool} close={close} value={value} onApply={onApply} linkActions={linkActions}/></div>}><span ref={holder} className="panel-trigger" data-open={open&&!disabled} onKeyDown={e=>{if(e.key==='Escape'){e.stopPropagation();setOpen(false);}}}>{children}</span></Popover>;
 }
 
@@ -49,7 +57,7 @@ const validUrl=(value:string)=>{try{const parsed=new URL(value);return parsed.pr
 const anchorId=(entry:AnchorEntry)=>entry.href.replace(/^#/, '');
 const linkHints={url:'Ссылка должна относится к текущему домену',anchor:'Добавьте # символ. Например: #name'} as const;
 function LinkHint({type}:{type:keyof typeof linkHints}){
- return <Tooltip title={linkHints[type]}><span className="link-field-hint" tabIndex={0} role="img" aria-label={linkHints[type]}><Asset node="6716:89076" name="imgIconInfoCircleOutlined"/></span></Tooltip>;
+ return <Tooltip title={linkHints[type]}><span className="link-field-hint" tabIndex={0} role="img" aria-label={linkHints[type]}><Asset node="6716:89076" name="imgIconInfoCircleOutlined" className="link-hint-default"/><img className="link-hint-hover" src="/icons/info-hover.svg" alt=""/></span></Tooltip>;
 }
 
 function LibraryRows({entries,onChoose,onEdit,onDelete}:{entries:LinkEntry[];onChoose:(entry:LinkEntry)=>void;onEdit:(entry:LinkEntry)=>void;onDelete:(entry:LinkEntry)=>void}){
@@ -58,7 +66,7 @@ function LibraryRows({entries,onChoose,onEdit,onDelete}:{entries:LinkEntry[];onC
 }
 
 function confirmDelete(entry:LinkEntry,onConfirm:()=>void){
- Modal.confirm({title:entry.type==='anchor'?'Удалить якорь?':'Удалить ссылку?',content:entry.type==='anchor'?'Существующие переходы на этот якорь останутся в тексте, но перестанут работать.':'Ссылка исчезнет из общей библиотеки. Уже применённые ссылки останутся в тексте.',okText:'Удалить',cancelText:'Отменить',okButtonProps:{danger:true},onOk:onConfirm});
+ Modal.confirm({title:entry.type==='anchor'?'Удалить якорь?':'Удалить ссылку?',content:entry.type==='anchor'?'Существующие переходы на этот якорь останутся в тексте, но перестанут работать.':'Ссылка исчезнет из общей библиотеки. Уже применённые ссылки останутся в тексте.',icon:null,width:400,centered:true,className:'link-delete-modal',okText:'Удалить',cancelText:'Отменить',okButtonProps:{danger:true},onOk:onConfirm});
 }
 
 function LinkPanel({close,actions}:{close:()=>void;actions?:LinkPanelActions}){
@@ -97,7 +105,7 @@ function LinkPanel({close,actions}:{close:()=>void;actions?:LinkPanelActions}){
   }
   if(resolved&&resolved.type==='anchor'&&actions?.hasSelection){actions.applyLink(resolved.href);close();}
  };
- return <div className="tool-panel link-panel"><h2>Добавить ссылку</h2><Segmented block value={type} options={[{label:'URL ссылка',value:'url'},{label:'Якорная ссылка',value:'anchor'}]} onChange={value=>{setType(value as 'url'|'anchor');setQuery('');setLabel(actions?.selectionText??'');setSelectedId(undefined);setShowList(false);}}/><PanelField label="Ссылка" required><div className="link-combobox"><Input value={query} status={typed&&type==='url'&&!resolved&&!validUrl(typed)?'error':undefined} aria-label="Ссылка" placeholder={type==='url'?'Введите URL ссылку':'Введите ссылку-якорь'} allowClear={{clearIcon:<img className="link-input-clear" src="/icons/input-clear.svg" alt=""/>}} suffix={<LinkHint type={type}/>} onFocus={()=>setShowList(true)} onChange={event=>{setQuery(event.target.value);setSelectedId(undefined);setShowList(true);}} onPressEnter={canAdd?submit:undefined}/>{showList&&filtered.length>0&&<LibraryRows entries={filtered} onChoose={choose} onEdit={edit} onDelete={del}/>}</div></PanelField>{type==='url'&&!resolved&&typed&&<PanelField label="Текст ссылки" required><Input.TextArea autoSize={{minRows:2,maxRows:3}} value={label} status={!label.trim()?'error':undefined} placeholder="Введите" onChange={event=>setLabel(event.target.value)} aria-label="Текст ссылки"/></PanelField>}{type==='url'&&!resolved&&typed&&!validUrl(typed)&&<span className="link-error">Введите корректную http:// или https:// ссылку</span>}<Footer close={close} onAction={submit} action="Добавить" disabled={!canAdd}/></div>;
+ return <div className="tool-panel link-panel"><h2>Добавить ссылку</h2><Segmented block value={type} options={[{label:'URL ссылка',value:'url'},{label:'Якорная ссылка',value:'anchor'}]} onChange={value=>{setType(value as 'url'|'anchor');setQuery('');setLabel(actions?.selectionText??'');setSelectedId(undefined);setShowList(false);}}/><PanelField label="Ссылка" required><div className="link-combobox"><Input value={query} status={typed&&type==='url'&&!resolved&&!validUrl(typed)?'error':undefined} aria-label="Ссылка" placeholder={type==='url'?'Введите URL ссылку':'Введите ссылку-якорь'} allowClear={{clearIcon:<img className="link-input-clear" src="/icons/c3be5.svg" alt=""/>}} suffix={<LinkHint type={type}/>} onFocus={()=>setShowList(true)} onChange={event=>{setQuery(event.target.value);setSelectedId(undefined);setShowList(true);}} onPressEnter={canAdd?submit:undefined}/>{showList&&filtered.length>0&&<LibraryRows entries={filtered} onChoose={choose} onEdit={edit} onDelete={del}/>}</div></PanelField>{type==='url'&&!resolved&&typed&&<PanelField label="Текст ссылки" required><Input.TextArea autoSize={{minRows:2,maxRows:3}} value={label} status={!label.trim()?'error':undefined} placeholder="Введите" onChange={event=>setLabel(event.target.value)} aria-label="Текст ссылки"/></PanelField>}{type==='url'&&!resolved&&typed&&!validUrl(typed)&&<span className="link-error">Введите корректную http:// или https:// ссылку</span>}<Footer close={close} onAction={submit} action="Добавить" disabled={!canAdd}/></div>;
 }
 
 function AnchorPanel({close,actions}:{close:()=>void;actions?:LinkPanelActions}){
@@ -117,20 +125,29 @@ function AnchorPanel({close,actions}:{close:()=>void;actions?:LinkPanelActions})
   actions?.createAnchor(anchorId(entry));close();
  };
  if(editing)return <div className="tool-panel link-panel"><button type="button" className="link-panel-back" onClick={()=>setEditing(undefined)}>‹ <span>Редактирование якорь</span></button><PanelField label="Название" required><Input value={query} onChange={event=>setQuery(event.target.value)} aria-label="Название"/></PanelField><Footer close={()=>setEditing(undefined)} onAction={()=>{if(query.trim()){update({...editing,label:query.trim()});setEditing(undefined);}}} action="Сохранить" disabled={!query.trim()}/></div>;
- return <div className="tool-panel link-panel"><h2>Якорная ссылка</h2><PanelField label="Название" required><div className="link-combobox"><Input value={query} aria-label="Название" allowClear={{clearIcon:<img className="link-input-clear" src="/icons/input-clear.svg" alt=""/>}} onFocus={()=>setShowList(true)} onChange={event=>{setQuery(event.target.value);setSelectedId(undefined);setShowList(true);}} onPressEnter={query.trim()?submit:undefined}/>{showList&&filtered.length>0&&<LibraryRows entries={filtered} onChoose={entry=>{setSelectedId(entry.id);setQuery(entry.label);setShowList(false);}} onEdit={entry=>{setEditing(entry as AnchorEntry);setQuery(entry.label);}} onDelete={del}/>}</div></PanelField><Footer close={close} onAction={submit} action="Добавить" disabled={!query.trim()}/></div>;
+ return <div className="tool-panel link-panel"><h2>Якорная ссылка</h2><PanelField label="Название" required><div className="link-combobox"><Input value={query} aria-label="Название" allowClear={{clearIcon:<img className="link-input-clear" src="/icons/c3be5.svg" alt=""/>}} onFocus={()=>setShowList(true)} onChange={event=>{setQuery(event.target.value);setSelectedId(undefined);setShowList(true);}} onPressEnter={query.trim()?submit:undefined}/>{showList&&filtered.length>0&&<LibraryRows entries={filtered} onChoose={entry=>{setSelectedId(entry.id);setQuery(entry.label);setShowList(false);}} onEdit={entry=>{setEditing(entry as AnchorEntry);setQuery(entry.label);}} onDelete={del}/>}</div></PanelField><Footer close={close} onAction={submit} action="Добавить" disabled={!query.trim()}/></div>;
 }
 
 type CompactView='main'|'alignment'|'list'|'paragraph'|'lineHeight';
 export function CompactToolsTrigger({children,disabled=false,inline,paragraph,onInlineAction,onParagraphAction}:{children:ReactNode;disabled?:boolean;inline:InlineFormat;paragraph:ParagraphFormat;onInlineAction:(tool:InlineTool)=>void;onParagraphAction:(tool:ParagraphTool,value?:string)=>void}){
  const [open,setOpen]=useState(false),[view,setView]=useState<CompactView>('main');
+ const holder=useRef<HTMLSpanElement>(null);
  const close=()=>{setOpen(false);setView('main');};
+ useEffect(()=>{
+  if(!open)return;
+  const dismiss=(event:MouseEvent)=>{const target=event.target;if(target instanceof Element&&!holder.current?.contains(target)&&!target.closest('.panel-more'))close();};
+  const dismissFromEditor=()=>close();
+  document.addEventListener('click',dismiss,true);
+  document.addEventListener('editor-dismiss-popovers',dismissFromEditor);
+  return()=>{document.removeEventListener('click',dismiss,true);document.removeEventListener('editor-dismiss-popovers',dismissFromEditor);};
+ },[open]);
  const back=<button className="compact-back" type="button" onClick={()=>setView('main')}><span aria-hidden="true">‹</span>К инструментам</button>;
  const content=view==='alignment'?<div className="compact-subpanel">{back}<MenuPanel tool="alignment" value={paragraph.alignment} onSelect={value=>{onParagraphAction('alignment',value);close();}}/></div>
   :view==='list'?<div className="compact-subpanel">{back}<MenuPanel tool="list" value={paragraph.list} onSelect={value=>{onParagraphAction('list',value);close();}}/></div>
   :view==='paragraph'?<div className="compact-subpanel">{back}<SpacingPanel tool="paragraph" value={paragraph.lineSpacing} close={close} onApply={value=>onParagraphAction('lineSpacing',value)}/></div>
   :view==='lineHeight'?<div className="compact-subpanel">{back}<SpacingPanel tool="lineHeight" value={paragraph.paragraphSpacing} close={close} onApply={value=>onParagraphAction('paragraphSpacing',value)}/></div>
   :<CompactMain inline={inline} paragraph={paragraph} onInline={tool=>{onInlineAction(tool);if(tool==='clear')close();}} onParagraph={(tool,next)=>{if(next)setView(next);else{onParagraphAction(tool);close();}}}/>;
- return <Popover trigger="click" placement="bottom" arrow={{pointAtCenter:true}} open={open&&!disabled} onOpenChange={next=>{setOpen(next);if(!next)setView('main');}} overlayClassName="editor-popover panel-more" content={<div role="dialog" aria-label="Дополнительные инструменты" onKeyDown={event=>{if(event.key==='Escape'){event.stopPropagation();close();}}}>{content}</div>}><span className="panel-trigger" data-open={open&&!disabled}>{children}</span></Popover>;
+ return <Popover trigger="click" placement="bottom" arrow={{pointAtCenter:true}} open={open&&!disabled} onOpenChange={next=>{setOpen(next);if(!next)setView('main');}} overlayClassName="editor-popover panel-more" content={<div role="dialog" aria-label="Дополнительные инструменты" onKeyDown={event=>{if(event.key==='Escape'){event.stopPropagation();close();}}}>{content}</div>}><span ref={holder} className="panel-trigger" data-open={open&&!disabled}>{children}</span></Popover>;
 }
 
 function CompactMain({inline,paragraph,onInline,onParagraph}:{inline:InlineFormat;paragraph:ParagraphFormat;onInline:(tool:InlineTool)=>void;onParagraph:(tool:ParagraphTool,next?:CompactView)=>void}){

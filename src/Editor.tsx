@@ -57,7 +57,7 @@ export function TextEditor({state,layout='One',density='High',tools='Full',iconS
   const linkActions:LinkPanelActions={selectionText:link.text,hasSelection:link.hasSelection,applyLink:href=>{applyLink(href);},createAnchor:id=>{createAnchor(id);},deleteAnchor,updateLinks};
   return <div className={`text-editor ${toolbarOnly?'toolbar-only':''} editor-state-${actualState}`} onMouseEnter={()=>setHover(true)} onMouseLeave={()=>setHover(false)}>
     <EditorToolbar key={`${layout}-${density}-${tools}-${iconSize}`} state={actualState} layout={layout} density={density} tools={tools} iconSize={iconSize} format={format} inline={inline} paragraph={paragraph} onFormatChange={apply} onInlineAction={applyInline} onParagraphAction={applyParagraph} linkActions={linkActions}/>
-    {!toolbarOnly&&<EditorContent editor={editor} className="rich-input"/>}
+    {!toolbarOnly&&<EditorContent editor={editor} className="rich-input" onMouseDownCapture={()=>document.dispatchEvent(new Event('editor-dismiss-popovers'))}/>}
   </div>;
 }
 
