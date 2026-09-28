@@ -19,6 +19,7 @@
 .table-menu-icon{display:block;width:16px;height:16px}
 
 .rich-input .tableWrapper{max-width:100%;overflow:auto;margin:4px 0 8px;border-radius:8px}
+.rich-input .tiptap>.tableWrapper+p{min-height:22px}
 .rich-input .tiptap table{width:100%;min-width:480px;border:1px solid #d9d9d9;border-collapse:separate;border-spacing:0;border-radius:8px;table-layout:fixed;margin:0;overflow:hidden}
 .rich-input .tiptap td,.rich-input .tiptap th{position:relative;box-sizing:border-box;min-width:120px;height:38px;padding:7px 8px;border:0;border-right:1px solid #d9d9d9;border-bottom:1px solid #d9d9d9;vertical-align:top;text-align:left;font:400 14px/22px Roboto,sans-serif}
 .rich-input .tiptap tr:last-child>td,.rich-input .tiptap tr:last-child>th{border-bottom:0}

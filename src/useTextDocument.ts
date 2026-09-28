@@ -1,6 +1,6 @@
-import {useEffect} from 'react';
+import {useEffect,useRef} from 'react';
 import {Extension, useEditor, useEditorState, type Editor} from '@tiptap/react';
-import {Plugin, PluginKey} from '@tiptap/pm/state';
+import {Plugin, PluginKey, TextSelection} from '@tiptap/pm/state';
 import {Decoration, DecorationSet} from '@tiptap/pm/view';
 import StarterKit from '@tiptap/starter-kit';
 import {TableKit} from '@tiptap/extension-table';
@@ -108,6 +108,25 @@ const TableAttributes=Extension.create({
  }}];},
 });
 
+const TableTrailingParagraph=Extension.create({
+ name:'tableTrailingParagraph',
+ addProseMirrorPlugins(){return [new Plugin({
+  appendTransaction(transactions,_oldState,newState){
+   if(!transactions.some(transaction=>transaction.docChanged)||newState.doc.lastChild?.type.name!=='table')return null;
+   const paragraph=newState.schema.nodes.paragraph;
+   return paragraph?newState.tr.insert(newState.doc.content.size,paragraph.create()):null;
+  },
+  props:{handleDOMEvents:{click(view,event){
+   const paragraph=(event.target as Element|null)?.closest('p');
+   if(!paragraph||paragraph.parentElement!==view.dom||!paragraph.previousElementSibling?.classList.contains('tableWrapper'))return false;
+   event.preventDefault();
+   view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc,view.state.doc.content.size-1)));
+   view.focus();
+   return true;
+  }}},
+ })];},
+});
+
 function linkSelection(editor:Editor):LinkSelection{
  const {selection,doc}=editor.state;
  return {hasSelection:!selection.empty,text:selection.empty?'':doc.textBetween(selection.from,selection.to,' ')};
@@ -170,15 +189,16 @@ function selectionParagraph(editor:Editor):ParagraphFormat{
 }
 
 export function useTextDocument({value,onChange,disabled,placeholder,onFocus,onBlur}:{value:string;onChange:(v:string)=>void;disabled:boolean;placeholder:string;onFocus:()=>void;onBlur:()=>void}){
+ const lastEditorText=useRef(value);
  const editor=useEditor({
-  extensions:[StarterKit.configure({heading:{levels:[1,2,3,4,5]},bold:{},italic:{},strike:{},underline:{},code:false,codeBlock:false,blockquote:false,bulletList:{},orderedList:{},listItem:{},listKeymap:{},horizontalRule:false,link:{openOnClick:false,autolink:false,linkOnPaste:false,HTMLAttributes:{rel:'noopener noreferrer'}},trailingNode:false}),ParagraphStyles,SearchHighlight,AnchorTag,TextStyle,FontFamily,FontSize,TableKit.configure({table:{resizable:true,renderWrapper:true,cellMinWidth:120}}),TableAttributes],
+  extensions:[StarterKit.configure({heading:{levels:[1,2,3,4,5]},bold:{},italic:{},strike:{},underline:{},code:false,codeBlock:false,blockquote:false,bulletList:{},orderedList:{},listItem:{},listKeymap:{},horizontalRule:false,link:{openOnClick:false,autolink:false,linkOnPaste:false,HTMLAttributes:{rel:'noopener noreferrer'}},trailingNode:false}),ParagraphStyles,SearchHighlight,AnchorTag,TextStyle,FontFamily,FontSize,TableKit.configure({table:{resizable:true,renderWrapper:true,cellMinWidth:120}}),TableAttributes,TableTrailingParagraph],
   content:plainDocument(value),editable:!disabled,
   editorProps:{attributes:state=>{
    const first=state.doc.firstChild;
    const isEmpty=state.doc.childCount===1&&Boolean(first?.isTextblock)&&first?.content.size===0;
    return {role:'textbox','aria-label':'Текст редактора','aria-multiline':'true','aria-disabled':String(disabled),'data-placeholder':placeholder,'data-empty':String(isEmpty)};
   }},
-  onUpdate:({editor})=>onChange(editor.getText({blockSeparator:'\n'})),onFocus,onBlur,
+  onUpdate:({editor})=>{const text=editor.getText({blockSeparator:'\n'});lastEditorText.current=text;onChange(text);},onFocus,onBlur,
  });
  const format=useEditorState({editor,selector:({editor})=>editor?selectionFormat(editor):defaultFormat})??defaultFormat;
  const inline=useEditorState({editor,selector:({editor})=>editor?({bold:editor.isActive('bold'),italic:editor.isActive('italic'),underline:editor.isActive('underline'),strike:editor.isActive('strike')}):emptyInline})??emptyInline;
@@ -186,7 +206,11 @@ export function useTextDocument({value,onChange,disabled,placeholder,onFocus,onB
  const link=useEditorState({editor,selector:({editor})=>editor?linkSelection(editor):{text:'',hasSelection:false}})??{text:'',hasSelection:false};
  const table=useEditorState({editor,selector:({editor}):TableState=>editor?({active:editor.isActive('table'),borderless:Boolean(editor.getAttributes('table').borderless),canMerge:editor.can().mergeCells(),canSplit:editor.can().splitCell(),canDeleteRow:editor.can().deleteRow(),canDeleteColumn:editor.can().deleteColumn(),canDeleteTable:editor.can().deleteTable()}):({active:false,borderless:false,canMerge:false,canSplit:false,canDeleteRow:false,canDeleteColumn:false,canDeleteTable:false})})??{active:false,borderless:false,canMerge:false,canSplit:false,canDeleteRow:false,canDeleteColumn:false,canDeleteTable:false};
  useEffect(()=>{if(editor&&editor.isEditable===disabled)editor.setEditable(!disabled,false);},[editor,disabled]);
- useEffect(()=>{if(editor&&value!==editor.getText({blockSeparator:'\n'}))editor.commands.setContent(plainDocument(value),{emitUpdate:false});},[editor,value]);
+ useEffect(()=>{
+  if(!editor||value===lastEditorText.current)return;
+  if(value!==editor.getText({blockSeparator:'\n'}))editor.commands.setContent(plainDocument(value),{emitUpdate:false});
+  lastEditorText.current=value;
+ },[editor,value]);
  const apply=(tool:FormatTool,value:string)=>{
   if(!editor||disabled)return;
   const command=editor.chain().focus();
