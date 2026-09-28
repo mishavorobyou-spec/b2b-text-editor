@@ -173,7 +173,11 @@ export function useTextDocument({value,onChange,disabled,placeholder,onFocus,onB
  const editor=useEditor({
   extensions:[StarterKit.configure({heading:{levels:[1,2,3,4,5]},bold:{},italic:{},strike:{},underline:{},code:false,codeBlock:false,blockquote:false,bulletList:{},orderedList:{},listItem:{},listKeymap:{},horizontalRule:false,link:{openOnClick:false,autolink:false,linkOnPaste:false,HTMLAttributes:{rel:'noopener noreferrer'}},trailingNode:false}),ParagraphStyles,SearchHighlight,AnchorTag,TextStyle,FontFamily,FontSize,TableKit.configure({table:{resizable:true,renderWrapper:true,cellMinWidth:120}}),TableAttributes],
   content:plainDocument(value),editable:!disabled,
-  editorProps:{attributes:state=>({role:'textbox','aria-label':'Текст редактора','aria-multiline':'true','aria-disabled':String(disabled),'data-placeholder':placeholder,'data-empty':String(!state.doc.textContent)})},
+  editorProps:{attributes:state=>{
+   const first=state.doc.firstChild;
+   const isEmpty=state.doc.childCount===1&&Boolean(first?.isTextblock)&&first?.content.size===0;
+   return {role:'textbox','aria-label':'Текст редактора','aria-multiline':'true','aria-disabled':String(disabled),'data-placeholder':placeholder,'data-empty':String(isEmpty)};
+  }},
   onUpdate:({editor})=>onChange(editor.getText({blockSeparator:'\n'})),onFocus,onBlur,
  });
  const format=useEditorState({editor,selector:({editor})=>editor?selectionFormat(editor):defaultFormat})??defaultFormat;
