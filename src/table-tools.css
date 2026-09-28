@@ -1,0 +1,29 @@
+.table-panel{overflow:visible}
+.table-actions-label{font-size:14px;line-height:22px}
+.table-actions-wrap{position:relative}
+.table-actions{display:flex;gap:8px}
+.table-actions .table-action-button{display:flex;width:32px;height:32px;padding:0;align-items:center;justify-content:center;gap:2px}
+.table-actions .table-action-button:has(.tiny-icon){width:44px}
+.table-actions .table-action-button.is-open{border-color:#1677ff;color:#1677ff;background:#e6f4ff}
+.table-actions .table-action-button:hover:not(:disabled) .panel-icon,.table-actions .table-action-button:focus-visible:not(:disabled) .panel-icon,.table-actions .table-action-button.is-open .panel-icon{filter:invert(39%) sepia(95%) saturate(2971%) hue-rotate(207deg) brightness(99%) contrast(102%)}
+.table-actions .table-action-button:last-child:hover:not(:disabled),.table-actions .table-action-button:last-child:focus-visible:not(:disabled){border-color:#ff4d4f;color:#ff4d4f}
+.table-actions .table-action-button:last-child:hover:not(:disabled) .panel-icon,.table-actions .table-action-button:last-child:focus-visible:not(:disabled) .panel-icon{filter:invert(37%) sepia(86%) saturate(2886%) hue-rotate(336deg) brightness(103%) contrast(101%)}
+.table-panel .ant-input-number{width:100%}
+.table-action-menu{position:absolute;z-index:3;top:40px;box-sizing:border-box;padding:4px;border-radius:8px;background:#fff;box-shadow:0 6px 16px rgba(0,0,0,.08),0 3px 6px -4px rgba(0,0,0,.12),0 9px 28px 8px rgba(0,0,0,.05)}
+.table-action-menu button{display:flex;width:100%;min-height:32px;align-items:center;gap:8px;padding:5px 8px;border:0;border-radius:4px;background:#fff;color:rgba(0,0,0,.88);font:400 14px/22px Inter,sans-serif;text-align:left;white-space:nowrap;cursor:pointer}
+.table-action-menu button:hover:not(:disabled),.table-action-menu button:focus-visible{background:rgba(0,0,0,.04)}
+.table-action-menu button:disabled{color:rgba(0,0,0,.25);cursor:not-allowed}
+.table-add-menu{left:0;width:316px}
+.table-delete-menu{right:0;width:220px}
+.table-menu-transform{display:flex;width:24px;height:24px;align-items:center;justify-content:center;flex:none}
+.table-menu-icon{display:block;width:16px;height:16px}
+
+.rich-input .tableWrapper{max-width:100%;overflow:auto;margin:4px 0 8px}
+.rich-input .tiptap table{width:100%;min-width:480px;border-collapse:collapse;table-layout:fixed;margin:0;overflow:hidden}
+.rich-input .tiptap td,.rich-input .tiptap th{position:relative;box-sizing:border-box;min-width:120px;height:38px;padding:7px 8px;border:1px solid #d9d9d9;vertical-align:top;text-align:left;font:400 14px/22px Roboto,sans-serif}
+.rich-input .tiptap th{font-weight:600;background:#fff}
+.rich-input .tiptap td>p,.rich-input .tiptap th>p{margin:0}
+.rich-input .tiptap .selectedCell:after{content:"";position:absolute;inset:0;z-index:1;background:rgba(22,119,255,.12);pointer-events:none}
+.rich-input .tiptap .column-resize-handle{position:absolute;top:0;right:-2px;bottom:-1px;width:4px;background:#1677ff;pointer-events:none}
+.rich-input .tiptap.resize-cursor{cursor:col-resize}
+.rich-input .tiptap table[data-borderless=true] td,.rich-input .tiptap table[data-borderless=true] th{border-color:transparent}

@@ -4,7 +4,7 @@ import {EditorContent} from '@tiptap/react';
 import {FormattingControls, defaultFormat, type TextFormat, type FormatTool} from './TextFormatting';
 import {useTextDocument, type EditingAction, type InlineFormat, type InlineTool, type ParagraphFormat, type ParagraphTool} from './useTextDocument';
 import {icons} from './all-assets';
-import {CompactToolsTrigger, PanelTrigger, panelForIcon, type LinkPanelActions, type SearchPanelActions} from './ToolPanels';
+import {CompactToolsTrigger, PanelTrigger, panelForIcon, type LinkPanelActions, type SearchPanelActions, type TablePanelActions} from './ToolPanels';
 import './editor.css';
 
 export type EditorState = 'Default'|'Hover'|'Focused'|'Typing'|'Filled'|'Disabled'|'Error';
@@ -25,9 +25,9 @@ const paragraphs:[ParagraphTool,string,string,string?][]=[['alignment','IconAlig
 const inserts=[['IconLinkOutlined','Ссылка'],['IconAnchor','Якорь'],['Icon','Таблица'],['IconPictureOutlined','Изображение'],['IconVideoCameraOutlined','Видео'],['IconCodeOutlined','Код'],['IconSpecialCharacterOutlined','Специальный символ']];
 const actions:[string,string,EditingAction?][]=[['IconReplaceSearchOutlined','Найти и заменить'],['IconCopyOutlined','Копировать','copy'],['IconSnippetsOutlined','Вставить','paste'],['IconScissorOutlined','Вырезать','cut'],['IconActionBackOutlined','Отменить','undo'],['IconActionForwardOutlined','Повторить','redo']];
 
-export function EditorToolbar({state='Default',layout='One',density='High',tools='Full',iconSize=20,format=defaultFormat,inline=emptyInline,paragraph=emptyParagraph,onFormatChange=()=>{},onInlineAction=()=>{},onParagraphAction=()=>{},onEditingAction=()=>{},linkActions,searchActions}:ToolbarProps & {format?:TextFormat;inline?:InlineFormat;paragraph?:ParagraphFormat;onFormatChange?:(tool:FormatTool,value:string)=>void;onInlineAction?:(tool:InlineTool)=>void;onParagraphAction?:(tool:ParagraphTool,value?:string)=>void;onEditingAction?:(action:EditingAction)=>void;linkActions?:LinkPanelActions;searchActions?:SearchPanelActions}){
+export function EditorToolbar({state='Default',layout='One',density='High',tools='Full',iconSize=20,format=defaultFormat,inline=emptyInline,paragraph=emptyParagraph,onFormatChange=()=>{},onInlineAction=()=>{},onParagraphAction=()=>{},onEditingAction=()=>{},linkActions,searchActions,tableActions}:ToolbarProps & {format?:TextFormat;inline?:InlineFormat;paragraph?:ParagraphFormat;onFormatChange?:(tool:FormatTool,value:string)=>void;onInlineAction?:(tool:InlineTool)=>void;onParagraphAction?:(tool:ParagraphTool,value?:string)=>void;onEditingAction?:(action:EditingAction)=>void;linkActions?:LinkPanelActions;searchActions?:SearchPanelActions;tableActions?:TablePanelActions}){
   const disabled=state==='Disabled';
-  const tool=(name:string,label:string,decoration?:string,onClick?:()=>void)=>{const button=<button type="button" className="ed-tool" aria-label={label} disabled={disabled} onMouseDown={e=>e.preventDefault()} onClick={onClick}><Icon name={name}/>{decoration==='arrow'&&<Icon name="IconCaretDownOutlined" small/>}{decoration==='color'&&<span className="ed-swatch"/>}</button>;return panelForIcon[name]?<Tooltip key={name} title={label}><PanelTrigger tool={panelForIcon[name]} disabled={disabled} linkActions={linkActions} searchActions={searchActions}>{button}</PanelTrigger></Tooltip>:<Tooltip key={name} title={label}>{button}</Tooltip>;};
+  const tool=(name:string,label:string,decoration?:string,onClick?:()=>void)=>{const button=<button type="button" className="ed-tool" aria-label={label} disabled={disabled} onMouseDown={e=>e.preventDefault()} onClick={onClick}><Icon name={name}/>{decoration==='arrow'&&<Icon name="IconCaretDownOutlined" small/>}{decoration==='color'&&<span className="ed-swatch"/>}</button>;return panelForIcon[name]?<Tooltip key={name} title={label}><PanelTrigger tool={panelForIcon[name]} disabled={disabled} linkActions={linkActions} searchActions={searchActions} tableActions={tableActions}>{button}</PanelTrigger></Tooltip>:<Tooltip key={name} title={label}>{button}</Tooltip>;};
   const group=(items:string[][])=>items.map(([name,label,decoration])=>tool(name,label,decoration));
   const basicTool=([id,name,label,hoverIcon,activeHoverIcon]:typeof basic[number])=>{
     const active=id!=='clear'&&inline[id];
@@ -52,12 +52,13 @@ export function EditorToolbar({state='Default',layout='One',density='High',tools
 export function TextEditor({state,layout='One',density='High',tools='Full',iconSize=20,value,onChange,placeholder='Введите',toolbarOnly=false}:EditorProps){
   const [focused,setFocused]=useState(false);
   const [hover,setHover]=useState(false);
-  const {editor,format,inline,paragraph,link,apply,applyInline,applyParagraph,applyLink,createAnchor,deleteAnchor,renameAnchor,updateLinks,search,replaceSearch,clearSearch,editingAction}=useTextDocument({value,onChange,disabled:state==='Disabled',placeholder,onFocus:()=>setFocused(true),onBlur:()=>setFocused(false)});
+  const {editor,format,inline,paragraph,link,table,apply,applyInline,applyParagraph,applyLink,createAnchor,deleteAnchor,renameAnchor,updateLinks,insertTable,applyTable,search,replaceSearch,clearSearch,editingAction}=useTextDocument({value,onChange,disabled:state==='Disabled',placeholder,onFocus:()=>setFocused(true),onBlur:()=>setFocused(false)});
   const actualState=state??(focused?(value?'Typing':'Focused'):(hover?'Hover':value?'Filled':'Default'));
   const linkActions:LinkPanelActions={selectionText:link.text,hasSelection:link.hasSelection,applyLink:href=>{applyLink(href);},createAnchor:(id,label)=>{createAnchor(id,label);},deleteAnchor,renameAnchor,updateLinks};
   const searchActions:SearchPanelActions={search,replace:(options,replacement,index,all)=>replaceSearch(options,replacement,index,all),clear:clearSearch};
+  const tableActions:TablePanelActions={state:table,insert:insertTable,apply:applyTable};
   return <div className={`text-editor ${toolbarOnly?'toolbar-only':''} editor-state-${actualState}`} onMouseEnter={()=>setHover(true)} onMouseLeave={()=>setHover(false)}>
-    <EditorToolbar key={`${layout}-${density}-${tools}-${iconSize}`} state={actualState} layout={layout} density={density} tools={tools} iconSize={iconSize} format={format} inline={inline} paragraph={paragraph} onFormatChange={apply} onInlineAction={applyInline} onParagraphAction={applyParagraph} onEditingAction={action=>{void editingAction(action);}} linkActions={linkActions} searchActions={searchActions}/>
+    <EditorToolbar key={`${layout}-${density}-${tools}-${iconSize}`} state={actualState} layout={layout} density={density} tools={tools} iconSize={iconSize} format={format} inline={inline} paragraph={paragraph} onFormatChange={apply} onInlineAction={applyInline} onParagraphAction={applyParagraph} onEditingAction={action=>{void editingAction(action);}} linkActions={linkActions} searchActions={searchActions} tableActions={tableActions}/>
     {!toolbarOnly&&<EditorContent editor={editor} className="rich-input" onMouseDownCapture={()=>document.dispatchEvent(new Event('editor-dismiss-popovers'))}/>}
   </div>;
 }

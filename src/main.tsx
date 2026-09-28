@@ -49,7 +49,7 @@ function Stand(){
  const [iconSize,setIconSize]=useState<16|20>(20);
  return <ConfigProvider theme={{token:{colorPrimary:'#1677ff',borderRadius:6,fontFamily:'Inter, sans-serif',fontSize:14}}}>
   <div className="stand">
-   <header><div className="brand"><span className="brand-mark">B2B</span><span className="header-divider"/><h1>Текстовый редактор</h1></div><span className="version">Локальная версия · 0.9</span></header>
+   <header><div className="brand"><span className="brand-mark">B2B</span><span className="header-divider"/><h1>Текстовый редактор</h1></div><span className="version">Локальная версия · 0.10</span></header>
    <main>
     <div className="settings" aria-label="Настройки стенда">
      <div className="stand-control"><span>Вид панели</span><Select aria-label="Вид панели" value={layout} onChange={setLayout} options={[{value:'One',label:'One · Полная'},{value:'Two',label:'Two · В две строки'},{value:'Three',label:'Three · С меню'}]}/></div>

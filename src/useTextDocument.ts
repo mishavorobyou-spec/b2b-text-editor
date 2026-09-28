@@ -3,6 +3,7 @@ import {Extension, useEditor, useEditorState, type Editor} from '@tiptap/react';
 import {Plugin, PluginKey} from '@tiptap/pm/state';
 import {Decoration, DecorationSet} from '@tiptap/pm/view';
 import StarterKit from '@tiptap/starter-kit';
+import {TableKit} from '@tiptap/extension-table';
 import {TextStyle, FontFamily, FontSize} from '@tiptap/extension-text-style';
 import {defaultFormat, type TextFormat, type FormatTool} from './TextFormatting';
 import {AnchorTag} from './AnchorTag';
@@ -17,6 +18,8 @@ export type LinkSelection={text:string;hasSelection:boolean};
 export type SearchOptions={query:string;caseSensitive:boolean;regularExpression:boolean;ignoreDiacritics:boolean};
 export type SearchSnapshot={matches:number;activeIndex:number;error?:string};
 export type EditingAction='copy'|'paste'|'cut'|'undo'|'redo';
+export type TableAction='addRowBefore'|'addRowAfter'|'addColumnBefore'|'addColumnAfter'|'mergeCells'|'splitCell'|'deleteRow'|'deleteColumn'|'removeBorder'|'deleteTable';
+export type TableState={active:boolean;borderless:boolean;canMerge:boolean;canSplit:boolean;canDeleteRow:boolean;canDeleteColumn:boolean;canDeleteTable:boolean};
 type SearchMatch={from:number;to:number};
 
 const searchKey=new PluginKey<DecorationSet>('editorSearchHighlight');
@@ -98,6 +101,13 @@ const ParagraphStyles=Extension.create({
  }}];},
 });
 
+const TableAttributes=Extension.create({
+ name:'tableAttributes',
+ addGlobalAttributes(){return [{types:['table'],attributes:{
+  borderless:{default:false,parseHTML:element=>element.getAttribute('data-borderless')==='true',renderHTML:attrs=>attrs.borderless?{'data-borderless':'true'}:{}},
+ }}];},
+});
+
 function linkSelection(editor:Editor):LinkSelection{
  const {selection,doc}=editor.state;
  return {hasSelection:!selection.empty,text:selection.empty?'':doc.textBetween(selection.from,selection.to,' ')};
@@ -161,7 +171,7 @@ function selectionParagraph(editor:Editor):ParagraphFormat{
 
 export function useTextDocument({value,onChange,disabled,placeholder,onFocus,onBlur}:{value:string;onChange:(v:string)=>void;disabled:boolean;placeholder:string;onFocus:()=>void;onBlur:()=>void}){
  const editor=useEditor({
-  extensions:[StarterKit.configure({heading:{levels:[1,2,3,4,5]},bold:{},italic:{},strike:{},underline:{},code:false,codeBlock:false,blockquote:false,bulletList:{},orderedList:{},listItem:{},listKeymap:{},horizontalRule:false,link:{openOnClick:false,autolink:false,linkOnPaste:false,HTMLAttributes:{rel:'noopener noreferrer'}},trailingNode:false}),ParagraphStyles,SearchHighlight,AnchorTag,TextStyle,FontFamily,FontSize],
+  extensions:[StarterKit.configure({heading:{levels:[1,2,3,4,5]},bold:{},italic:{},strike:{},underline:{},code:false,codeBlock:false,blockquote:false,bulletList:{},orderedList:{},listItem:{},listKeymap:{},horizontalRule:false,link:{openOnClick:false,autolink:false,linkOnPaste:false,HTMLAttributes:{rel:'noopener noreferrer'}},trailingNode:false}),ParagraphStyles,SearchHighlight,AnchorTag,TextStyle,FontFamily,FontSize,TableKit.configure({table:{resizable:true,renderWrapper:true,cellMinWidth:120}}),TableAttributes],
   content:plainDocument(value),editable:!disabled,
   editorProps:{attributes:state=>({role:'textbox','aria-label':'Текст редактора','aria-multiline':'true','aria-disabled':String(disabled),'data-placeholder':placeholder,'data-empty':String(!state.doc.textContent)})},
   onUpdate:({editor})=>onChange(editor.getText({blockSeparator:'\n'})),onFocus,onBlur,
@@ -170,6 +180,7 @@ export function useTextDocument({value,onChange,disabled,placeholder,onFocus,onB
  const inline=useEditorState({editor,selector:({editor})=>editor?({bold:editor.isActive('bold'),italic:editor.isActive('italic'),underline:editor.isActive('underline'),strike:editor.isActive('strike')}):emptyInline})??emptyInline;
  const paragraph=useEditorState({editor,selector:({editor})=>editor?selectionParagraph(editor):emptyParagraph})??emptyParagraph;
  const link=useEditorState({editor,selector:({editor})=>editor?linkSelection(editor):{text:'',hasSelection:false}})??{text:'',hasSelection:false};
+ const table=useEditorState({editor,selector:({editor}):TableState=>editor?({active:editor.isActive('table'),borderless:Boolean(editor.getAttributes('table').borderless),canMerge:editor.can().mergeCells(),canSplit:editor.can().splitCell(),canDeleteRow:editor.can().deleteRow(),canDeleteColumn:editor.can().deleteColumn(),canDeleteTable:editor.can().deleteTable()}):({active:false,borderless:false,canMerge:false,canSplit:false,canDeleteRow:false,canDeleteColumn:false,canDeleteTable:false})})??{active:false,borderless:false,canMerge:false,canSplit:false,canDeleteRow:false,canDeleteColumn:false,canDeleteTable:false};
  useEffect(()=>{if(editor&&editor.isEditable===disabled)editor.setEditable(!disabled,false);},[editor,disabled]);
  useEffect(()=>{if(editor&&value!==editor.getText({blockSeparator:'\n'}))editor.commands.setContent(plainDocument(value),{emitUpdate:false});},[editor,value]);
  const apply=(tool:FormatTool,value:string)=>{
@@ -218,6 +229,25 @@ export function useTextDocument({value,onChange,disabled,placeholder,onFocus,onB
  const deleteAnchor=(anchorId:string)=>{if(editor&&!disabled)removeAnchorTarget(editor,anchorId);};
  const renameAnchor=(anchorId:string,label:string)=>{if(editor&&!disabled)renameAnchorTarget(editor,anchorId,label);};
  const updateLinks=(oldHref:string,newHref:string)=>{if(editor&&!disabled)replaceLinkHref(editor,oldHref,newHref);};
+ const insertTable=(columns:number,rows:number,withHeaderRow:boolean)=>{
+  if(!editor||disabled)return false;
+  return editor.chain().focus().insertTable({cols:columns,rows:rows+(withHeaderRow?1:0),withHeaderRow}).run();
+ };
+ const applyTable=(action:TableAction)=>{
+  if(!editor||disabled)return false;
+  const command=editor.chain().focus();
+  if(action==='addRowBefore')return command.addRowBefore().run();
+  if(action==='addRowAfter')return command.addRowAfter().run();
+  if(action==='addColumnBefore')return command.addColumnBefore().run();
+  if(action==='addColumnAfter')return command.addColumnAfter().run();
+  if(action==='mergeCells')return command.mergeCells().run();
+  if(action==='splitCell')return command.splitCell().run();
+  if(action==='deleteRow')return command.deleteRow().run();
+  if(action==='deleteColumn')return command.deleteColumn().run();
+  if(action==='removeBorder')return command.updateAttributes('table',{borderless:true}).run();
+  if(action==='deleteTable')return command.deleteTable().run();
+  return false;
+ };
  const search=(options:SearchOptions,requestedIndex=0):SearchSnapshot=>{
   if(!editor)return {matches:0,activeIndex:0};
   const result=findMatches(editor,options);
@@ -255,5 +285,5 @@ export function useTextDocument({value,onChange,disabled,placeholder,onFocus,onB
    return document.execCommand(action);
   }
  };
- return {editor,format,inline,paragraph,link,apply,applyInline,applyParagraph,applyLink,createAnchor,deleteAnchor,renameAnchor,updateLinks,search,replaceSearch,clearSearch,editingAction};
+ return {editor,format,inline,paragraph,link,table,apply,applyInline,applyParagraph,applyLink,createAnchor,deleteAnchor,renameAnchor,updateLinks,insertTable,applyTable,search,replaceSearch,clearSearch,editingAction};
 }

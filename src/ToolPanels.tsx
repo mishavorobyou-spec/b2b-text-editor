@@ -1,11 +1,12 @@
 import React, {useEffect, useId, useRef, useState, type ReactNode} from 'react';
-import {Button, Input, Segmented, Popover, Checkbox, Modal, Tooltip} from 'antd';
+import {Button, Input, InputNumber, Segmented, Popover, Checkbox, Modal, Tooltip} from 'antd';
 import {icons} from './all-assets';
 import {panelAssets} from './panel-assets';
 import './panels.css';
 import './link-tools.css';
+import './table-tools.css';
 import {FormatPanel, defaultFormat, type FormatTool} from './TextFormatting';
-import type {InlineFormat, InlineTool, ParagraphFormat, ParagraphTool, SearchOptions, SearchSnapshot} from './useTextDocument';
+import type {InlineFormat, InlineTool, ParagraphFormat, ParagraphTool, SearchOptions, SearchSnapshot, TableAction, TableState} from './useTextDocument';
 import {createEntryId, useLinkLibrary, type AnchorEntry, type LinkEntry, type UrlLinkEntry} from './linkLibrary';
 
 export type ToolId = 'textType'|'font'|'fontSize'|'color'|'highlight'|'cellColor'|'fillColor'|'alignment'|'list'|'paragraph'|'lineHeight'|'link'|'anchor'|'table'|'image'|'video'|'symbol'|'search'|'more';
@@ -14,8 +15,9 @@ export const panelForIcon:Record<string,ToolId>={IconTextTypeOutlined:'textType'
 
 export type LinkPanelActions={selectionText:string;hasSelection:boolean;applyLink:(href:string)=>void;createAnchor:(anchorId:string,label:string)=>void;deleteAnchor:(anchorId:string)=>void;renameAnchor:(anchorId:string,label:string)=>void;updateLinks:(oldHref:string,newHref:string)=>void};
 export type SearchPanelActions={search:(options:SearchOptions,index?:number)=>SearchSnapshot;replace:(options:SearchOptions,replacement:string,index:number,all?:boolean)=>SearchSnapshot;clear:()=>void};
+export type TablePanelActions={state:TableState;insert:(columns:number,rows:number,withHeaderRow:boolean)=>boolean;apply:(action:TableAction)=>boolean};
 
-export function PanelTrigger({tool,children,disabled=false,value,onApply,linkActions,searchActions}:{tool:ToolId;children:ReactNode;disabled?:boolean;value?:string;onApply?:(value:string)=>void;linkActions?:LinkPanelActions;searchActions?:SearchPanelActions}){
+export function PanelTrigger({tool,children,disabled=false,value,onApply,linkActions,searchActions,tableActions}:{tool:ToolId;children:ReactNode;disabled?:boolean;value?:string;onApply?:(value:string)=>void;linkActions?:LinkPanelActions;searchActions?:SearchPanelActions;tableActions?:TablePanelActions}){
  const [open,setOpen]=useState(false);
  const holder=useRef<HTMLSpanElement>(null);
  const close=()=>{setOpen(false);holder.current?.querySelector<HTMLElement>('button,input')?.focus();};
@@ -27,7 +29,7 @@ export function PanelTrigger({tool,children,disabled=false,value,onApply,linkAct
   document.addEventListener('editor-dismiss-popovers',dismissFromEditor);
   return()=>{document.removeEventListener('click',dismiss,true);document.removeEventListener('editor-dismiss-popovers',dismissFromEditor);};
  },[open,tool]);
- return <Popover trigger="click" placement="bottom" arrow={{pointAtCenter:true}} open={open&&!disabled} onOpenChange={next=>{if(next||tool!=='link')setOpen(next);}} destroyOnHidden overlayClassName={`editor-popover panel-${tool}`} content={<div role="dialog" aria-label={toolLabels[tool]} onKeyDown={e=>{if(e.key==='Escape'){e.stopPropagation();close();}}}><PanelContent key={`${tool}-${value??''}`} tool={tool} close={close} value={value} onApply={onApply} linkActions={linkActions} searchActions={searchActions}/></div>}><span ref={holder} className="panel-trigger" data-open={open&&!disabled} onKeyDown={e=>{if(e.key==='Escape'){e.stopPropagation();setOpen(false);}}}>{children}</span></Popover>;
+ return <Popover trigger="click" placement="bottom" arrow={{pointAtCenter:true}} open={open&&!disabled} onOpenChange={next=>{if(next||tool!=='link')setOpen(next);}} destroyOnHidden overlayClassName={`editor-popover panel-${tool}`} content={<div role="dialog" aria-label={toolLabels[tool]} onKeyDown={e=>{if(e.key==='Escape'){e.stopPropagation();close();}}}><PanelContent key={`${tool}-${value??''}`} tool={tool} close={close} value={value} onApply={onApply} linkActions={linkActions} searchActions={searchActions} tableActions={tableActions}/></div>}><span ref={holder} className="panel-trigger" data-open={open&&!disabled} onKeyDown={e=>{if(e.key==='Escape'){e.stopPropagation();setOpen(false);}}}>{children}</span></Popover>;
 }
 
 export function PanelField({label,placeholder='Введите',required=false,children}:{label?:string;placeholder?:string;required?:boolean;children?:ReactNode}){
@@ -180,14 +182,52 @@ function SearchPanel({actions}:{actions?:SearchPanelActions}){
  useEffect(()=>()=>actionsRef.current?.clear(),[]);
  return <div className="tool-panel search-panel"><div className="panel-title-row"><h2>Найти и заменить</h2><div className="search-count"><span>{snapshot.matches?snapshot.activeIndex+1:0}/{snapshot.matches}</span><button type="button" aria-label="Предыдущее совпадение" disabled={!snapshot.matches} onClick={()=>move(-1)}><Asset node="6716:89141" name="imgIconLeftOutlined"/></button><button type="button" aria-label="Следующее совпадение" disabled={!snapshot.matches} onClick={()=>move(1)}><Asset node="6716:89141" name="imgIconRightOutlined"/></button></div></div><PanelField label="Найти"><Input value={query} status={snapshot.error?'error':undefined} maxLength={40} showCount aria-label="Найти" placeholder="Текст для поиска" allowClear onChange={event=>changeQuery(event.target.value)}/></PanelField>{snapshot.error&&<span className="search-error">{snapshot.error}</span>}<PanelField label="Заменить"><Input value={replacement} maxLength={40} showCount aria-label="Заменить" placeholder="Текст для замены" allowClear onChange={event=>setReplacement(event.target.value)}/></PanelField><Checkbox checked={caseSensitive} onChange={event=>toggle('caseSensitive',event.target.checked)}>Учитывать регистр</Checkbox><Checkbox checked={regularExpression} onChange={event=>toggle('regularExpression',event.target.checked)}>Использовать регулярные выражения <Tooltip title={regexHint}><span className="search-help" tabIndex={0} aria-label={regexHint}><Asset node="6716:89141" name="imgIconQuestionCircleOutlined"/></span></Tooltip></Checkbox><Checkbox checked={ignoreDiacritics} onChange={event=>toggle('ignoreDiacritics',event.target.checked)}>Игнорировать диакритические знаки в латинице <Tooltip title={diacriticsHint}><span className="search-help" tabIndex={0} aria-label={diacriticsHint}><Asset node="6716:89141" name="imgIconQuestionCircleOutlined"/></span></Tooltip></Checkbox><div className="panel-footer"><Button disabled={!snapshot.matches} onClick={()=>replace(true)}>Заменить все</Button><Button type="primary" disabled={!snapshot.matches} onClick={()=>replace()}>Заменить</Button></div></div>;
 }
-export function PanelContent({tool,close,value,onApply,linkActions,searchActions}:{tool:ToolId;close:()=>void;value?:string;onApply?:(value:string)=>void;linkActions?:LinkPanelActions;searchActions?:SearchPanelActions}){
+
+const addTableItems:{action:TableAction;label:string;rotate:number}[]=[
+ {action:'addRowBefore',label:'Добавить строку сверху',rotate:0},
+ {action:'addRowAfter',label:'Добавить строку снизу',rotate:180},
+ {action:'addColumnBefore',label:'Добавить колонку слева',rotate:270},
+ {action:'addColumnAfter',label:'Добавить колонку справа',rotate:90},
+];
+const deleteTableItems:{action:TableAction;label:string}[]=[
+ {action:'deleteRow',label:'Удалить строчку'},
+ {action:'deleteColumn',label:'Удалить колонку'},
+ {action:'removeBorder',label:'Удалить обводку таблицы'},
+ {action:'deleteTable',label:'Удалить таблицу'},
+];
+function TablePanel({close,actions}:{close:()=>void;actions?:TablePanelActions}){
+ const [columns,setColumns]=useState<number|null>(null),[rows,setRows]=useState<number|null>(null),[header,setHeader]=useState(false);
+ const [menu,setMenu]=useState<'add'|'delete'>();
+ const state=actions?.state;
+ const run=(action:TableAction)=>{actions?.apply(action);setMenu(undefined);};
+ const actionButton=(kind:'add'|'delete',icon:string,label:string,disabled=false)=><Tooltip title={label}><Button className={`table-action-button ${menu===kind?'is-open':''}`} disabled={disabled} aria-label={label} onMouseDown={event=>event.preventDefault()} onClick={()=>setMenu(current=>current===kind?undefined:kind)}><Asset node="6716:89089" name={icon}/><Asset node="6716:89089" name="imgIconCaretDownOutlined" className="tiny-icon"/></Button></Tooltip>;
+ const valid=columns!==null&&columns>=1&&columns<=10&&rows!==null&&rows>=1&&rows<=20;
+ return <div className="tool-panel table-panel">
+  <h2>Таблица</h2><span className="table-actions-label">Действия</span>
+  <div className="table-actions-wrap"><div className="table-actions">
+   {actionButton('add','imgIconInsertRowAboveOutlined','Добавить колонку',!state?.active)}
+   <Tooltip title="Объединить ячейки"><Button className="table-action-button" aria-label="Объединить ячейки" disabled={!state?.canMerge} onMouseDown={event=>event.preventDefault()} onClick={()=>run('mergeCells')}><Asset node="6716:89089" name="imgIconGroupOutlined"/></Button></Tooltip>
+   <Tooltip title="Разделить ячейки"><Button className="table-action-button" aria-label="Разделить ячейки" disabled={!state?.canSplit} onMouseDown={event=>event.preventDefault()} onClick={()=>run('splitCell')}><Asset node="6716:89089" name="imgIconUngroupOutlined"/></Button></Tooltip>
+   {actionButton('delete','imgIconDeleteOutlined','Удаление',!state?.active)}
+  </div>
+  {menu==='add'&&<div className="table-action-menu table-add-menu" role="menu">{addTableItems.map(item=><button type="button" role="menuitem" key={item.action} onMouseDown={event=>event.preventDefault()} onClick={()=>run(item.action)}><span className="table-menu-transform" style={{transform:`rotate(${item.rotate}deg)`}}><Asset node="6716:89089" name="imgIconInsertRowAboveOutlined" className="table-menu-icon"/></span><span>{item.label}</span></button>)}</div>}
+  {menu==='delete'&&<div className="table-action-menu table-delete-menu" role="menu">{deleteTableItems.map(item=><button type="button" role="menuitem" key={item.action} disabled={(item.action==='deleteRow'&&!state?.canDeleteRow)||(item.action==='deleteColumn'&&!state?.canDeleteColumn)||(item.action==='deleteTable'&&!state?.canDeleteTable)||(item.action==='removeBorder'&&state?.borderless)} onMouseDown={event=>event.preventDefault()} onClick={()=>run(item.action)}>{item.label}</button>)}</div>}
+  </div>
+  <PanelField label="Столбцы" required><InputNumber min={1} max={10} precision={0} controls={false} value={columns} status={columns!==null&&(columns<1||columns>10)?'error':undefined} onChange={value=>setColumns(value)} placeholder="Введите" aria-label="Столбцы"/></PanelField>
+  <PanelField label="Строки" required><InputNumber min={1} max={20} precision={0} controls={false} value={rows} status={rows!==null&&(rows<1||rows>20)?'error':undefined} onChange={value=>setRows(value)} placeholder="Введите" aria-label="Строки"/></PanelField>
+  <Checkbox checked={header} onChange={event=>setHeader(event.target.checked)}>Добавить строчку заголовка</Checkbox>
+  <Footer close={close} action="Добавить" disabled={!valid} onAction={()=>{if(valid&&columns!==null&&rows!==null&&actions?.insert(columns,rows,header))close();}}/>
+ </div>;
+}
+
+export function PanelContent({tool,close,value,onApply,linkActions,searchActions,tableActions}:{tool:ToolId;close:()=>void;value?:string;onApply?:(value:string)=>void;linkActions?:LinkPanelActions;searchActions?:SearchPanelActions;tableActions?:TablePanelActions}){
  if(tool==='textType'||tool==='font'||tool==='fontSize')return <CatalogFormatPanel tool={tool} close={close}/>;
  if(tool==='link')return <LinkPanel close={close} actions={linkActions}/>;
  if(tool==='paragraph'||tool==='lineHeight')return <SpacingPanel tool={tool} value={value} close={close} onApply={onApply}/>;
  if(['color','highlight','cellColor','fillColor'].includes(tool))return <ColorPanel tool={tool}/>;
  if(tool==='alignment'||tool==='list'||tool==='more')return <MenuPanel tool={tool} value={value} onSelect={selected=>{onApply?.(selected);if(onApply)close();}}/>;
  if(tool==='anchor')return <AnchorPanel close={close} actions={linkActions}/>;
- if(tool==='table')return <div className="tool-panel"><h2>Таблица</h2><span>Действия</span><div className="table-actions">{['imgIconInsertRowAboveOutlined','imgIconGroupOutlined','imgIconUngroupOutlined','imgIconDeleteOutlined'].map((name,i)=><Button key={name} aria-label={['Действия с таблицей','Объединить ячейки','Разделить ячейки','Удалить'][i]}><Asset node="6716:89089" name={name}/>{(i===0||i===3)&&<Asset node="6716:89089" name="imgIconCaretDownOutlined" className="tiny-icon"/>}</Button>)}</div><PanelField label="Столбцы" required/><PanelField label="Строки" required/><Checkbox>Добавить строчку заголовка</Checkbox><Footer close={close} action="Добавить"/></div>;
+ if(tool==='table')return <TablePanel close={close} actions={tableActions}/>;
  if(tool==='image'||tool==='video'){const video=tool==='video';return <div className="tool-panel"><h2>{video?'Настройка видео':'Настройка изображения'}</h2><MediaTools video={video}/>{!video&&<Button className="upload-placeholder"><Asset node="6716:89102" name="imgIconUploadOutlined"/>Загрузить изображение</Button>}<PanelField label="Высота"><Input aria-label="Высота" placeholder="Введите" addonAfter="px"/></PanelField><PanelField label="Ширина"><Input aria-label="Ширина" placeholder="Введите" addonAfter="px"/></PanelField><PanelField label={video?'Ссылка на видео':'Ссылка для перехода по изображению'} placeholder={video?'Введите значение':'Введите'} required={video}/><Checkbox>Использовать оригинальный размер {video?'видео':'изображения'}</Checkbox><Footer close={close} action="Добавить"/></div>;}
  if(tool==='symbol')return <div className="tool-panel"><h2>Спец символы</h2><div className="symbol-grid">{Array.from('‐‑‒–—―‘’‚‛“”„‟¡¿§©®™†‡•‣․‥…‧‰‱′″‴‵‶‸‹›´µ¶·«»¼½¾℃№ﬀﬁﬂﬃﬄﬅﬆ←↑→↓↔↕↖↗↘↙⁰¹²³⁴⁵⁶⁷⁸⁹⁻⁼⁽⁺⁾ⁿⁱ').map((s,i)=><button type="button" key={i} aria-label={`Символ ${s}`}>{s}</button>)}</div></div>;
  if(tool==='search')return <SearchPanel actions={searchActions}/>;
