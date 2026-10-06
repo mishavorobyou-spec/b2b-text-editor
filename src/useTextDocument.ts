@@ -1,14 +1,18 @@
 import {useEffect,useRef} from 'react';
 import {Extension, useEditor, useEditorState, type Editor} from '@tiptap/react';
-import {Plugin, PluginKey, TextSelection} from '@tiptap/pm/state';
+import {NodeSelection, Plugin, PluginKey, TextSelection} from '@tiptap/pm/state';
 import {Decoration, DecorationSet} from '@tiptap/pm/view';
 import StarterKit from '@tiptap/starter-kit';
-import {TableKit} from '@tiptap/extension-table';
-import {TextStyle, FontFamily, FontSize} from '@tiptap/extension-text-style';
+import {TableKit, TableView} from '@tiptap/extension-table';
+import {TextStyle, FontFamily, FontSize, Color, BackgroundColor} from '@tiptap/extension-text-style';
 import {defaultFormat, type TextFormat, type FormatTool} from './TextFormatting';
 import {AnchorTag} from './AnchorTag';
+import {EditorImage, type EditorImageData} from './EditorImage';
+import {EditorVideo, type EditorVideoData} from './EditorVideo';
+import {CenterImageWrap, alignMediaAtBlockStart, convertImageToCenterWrap, convertVideoToCenterWrap} from './CenterImageWrap';
+import {SeoImageSlot, type SeoImageVariant} from './SeoImageSlot';
 
-export type InlineFormat = {bold:boolean;italic:boolean;underline:boolean;strike:boolean};
+export type InlineFormat = {bold:boolean;italic:boolean;underline:boolean;strike:boolean;code:boolean};
 export type InlineTool = keyof InlineFormat|'clear';
 export type TextAlignment = 'left'|'center'|'right'|'justify';
 export type ListStyle = 'ordered'|'bullet';
@@ -20,6 +24,8 @@ export type SearchSnapshot={matches:number;activeIndex:number;error?:string};
 export type EditingAction='copy'|'paste'|'cut'|'undo'|'redo';
 export type TableAction='addRowBefore'|'addRowAfter'|'addColumnBefore'|'addColumnAfter'|'mergeCells'|'splitCell'|'deleteRow'|'deleteColumn'|'removeBorder'|'deleteTable';
 export type TableState={active:boolean;borderless:boolean;canMerge:boolean;canSplit:boolean;canDeleteRow:boolean;canDeleteColumn:boolean;canDeleteTable:boolean};
+export type ColorTool='color'|'highlight'|'cellColor';
+export type ColorState={color:string|null;highlight:string|null;cellColor:string|null;inCell:boolean};
 type SearchMatch={from:number;to:number};
 
 const searchKey=new PluginKey<DecorationSet>('editorSearchHighlight');
@@ -36,7 +42,7 @@ const SearchHighlight=Extension.create({
 });
 
 const headingSizes:Record<number,string>={1:'38',2:'30',3:'24',4:'20',5:'16'};
-const emptyInline:InlineFormat={bold:false,italic:false,underline:false,strike:false};
+const emptyInline:InlineFormat={bold:false,italic:false,underline:false,strike:false,code:false};
 const emptyParagraph:ParagraphFormat={alignment:'left',canShiftRight:false,canShiftLeft:false};
 const plainDocument=(value:string)=>({type:'doc',content:value.split('\n').map(text=>({type:'paragraph',content:text?[{type:'text',text}]:[]}))});
 
@@ -108,19 +114,50 @@ const TableAttributes=Extension.create({
  }}];},
 });
 
-const TableTrailingParagraph=Extension.create({
- name:'tableTrailingParagraph',
+class BorderAwareTableView extends TableView {
+ update(node: Parameters<TableView['update']>[0]) {
+  if(!super.update(node))return false;
+  if(node.attrs.borderless)this.table.setAttribute('data-borderless','true');
+  else this.table.removeAttribute('data-borderless');
+  return true;
+ }
+}
+
+const ColorAttributes=Extension.create({
+ name:'editorColorAttributes',
+ addGlobalAttributes(){return [{types:['tableCell','tableHeader'],attributes:{backgroundColor:{default:null,parseHTML:element=>element.style.backgroundColor||null,renderHTML:attrs=>attrs.backgroundColor?{style:`background-color: ${attrs.backgroundColor}`}:{}}}}];},
+});
+
+const MediaBoundaryParagraphs=Extension.create({
+ name:'mediaBoundaryParagraphs',
  addProseMirrorPlugins(){return [new Plugin({
   appendTransaction(transactions,_oldState,newState){
-   if(!transactions.some(transaction=>transaction.docChanged)||newState.doc.lastChild?.type.name!=='table')return null;
+   if(!transactions.some(transaction=>transaction.docChanged))return null;
    const paragraph=newState.schema.nodes.paragraph;
-   return paragraph?newState.tr.insert(newState.doc.content.size,paragraph.create()):null;
+   if(!paragraph)return null;
+   const blocks=['table','centerImageWrap','seoImageSlot'];
+   const isMediaBlock=(node:typeof newState.doc.firstChild)=>Boolean(node&&(blocks.includes(node.type.name)||(node.type.name==='paragraph'&&node.childCount===1&&['editorImage','editorVideo'].includes(node.firstChild?.type.name??''))));
+   const doc=newState.doc;
+   const insertions:number[]=[];
+   let position=0;
+   for(let index=0;index<doc.childCount;index++){
+    const node=doc.child(index);
+    if(isMediaBlock(node)){
+     if(index===0)insertions.push(position);
+     if(index===doc.childCount-1||isMediaBlock(doc.child(index+1)))insertions.push(position+node.nodeSize);
+    }
+    position+=node.nodeSize;
+   }
+   if(!insertions.length)return null;
+   const transaction=newState.tr;
+   for(const at of insertions.reverse())transaction.insert(at,paragraph.create());
+   return transaction;
   },
   props:{handleDOMEvents:{click(view,event){
    const paragraph=(event.target as Element|null)?.closest('p');
    if(!paragraph||paragraph.parentElement!==view.dom||!paragraph.previousElementSibling?.classList.contains('tableWrapper'))return false;
    event.preventDefault();
-   view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc,view.state.doc.content.size-1)));
+   view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc,view.posAtDOM(paragraph,0))));
    view.focus();
    return true;
   }}},
@@ -191,7 +228,7 @@ function selectionParagraph(editor:Editor):ParagraphFormat{
 export function useTextDocument({value,onChange,disabled,placeholder,onFocus,onBlur}:{value:string;onChange:(v:string)=>void;disabled:boolean;placeholder:string;onFocus:()=>void;onBlur:()=>void}){
  const lastEditorText=useRef(value);
  const editor=useEditor({
-  extensions:[StarterKit.configure({heading:{levels:[1,2,3,4,5]},bold:{},italic:{},strike:{},underline:{},code:false,codeBlock:false,blockquote:false,bulletList:{},orderedList:{},listItem:{},listKeymap:{},horizontalRule:false,link:{openOnClick:false,autolink:false,linkOnPaste:false,HTMLAttributes:{rel:'noopener noreferrer'}},trailingNode:false}),ParagraphStyles,SearchHighlight,AnchorTag,TextStyle,FontFamily,FontSize,TableKit.configure({table:{resizable:true,renderWrapper:true,cellMinWidth:120}}),TableAttributes,TableTrailingParagraph],
+  extensions:[StarterKit.configure({heading:{levels:[1,2,3,4,5]},bold:{},italic:{},strike:{},underline:{},code:{},codeBlock:false,blockquote:false,bulletList:{},orderedList:{},listItem:{},listKeymap:{},horizontalRule:false,link:{openOnClick:false,autolink:false,linkOnPaste:false,HTMLAttributes:{rel:'noopener noreferrer'}},trailingNode:false}),ParagraphStyles,SearchHighlight,AnchorTag,EditorImage,EditorVideo,CenterImageWrap,SeoImageSlot,TextStyle,FontFamily,FontSize,Color,BackgroundColor,TableKit.configure({table:{resizable:true,renderWrapper:true,cellMinWidth:120,View:BorderAwareTableView}}),TableAttributes,ColorAttributes,MediaBoundaryParagraphs],
   content:plainDocument(value),editable:!disabled,
   editorProps:{attributes:state=>{
    const first=state.doc.firstChild;
@@ -201,10 +238,25 @@ export function useTextDocument({value,onChange,disabled,placeholder,onFocus,onB
   onUpdate:({editor})=>{const text=editor.getText({blockSeparator:'\n'});lastEditorText.current=text;onChange(text);},onFocus,onBlur,
  });
  const format=useEditorState({editor,selector:({editor})=>editor?selectionFormat(editor):defaultFormat})??defaultFormat;
- const inline=useEditorState({editor,selector:({editor})=>editor?({bold:editor.isActive('bold'),italic:editor.isActive('italic'),underline:editor.isActive('underline'),strike:editor.isActive('strike')}):emptyInline})??emptyInline;
+ const inline=useEditorState({editor,selector:({editor})=>editor?({bold:editor.isActive('bold'),italic:editor.isActive('italic'),underline:editor.isActive('underline'),strike:editor.isActive('strike'),code:editor.isActive('code')}):emptyInline})??emptyInline;
  const paragraph=useEditorState({editor,selector:({editor})=>editor?selectionParagraph(editor):emptyParagraph})??emptyParagraph;
  const link=useEditorState({editor,selector:({editor})=>editor?linkSelection(editor):{text:'',hasSelection:false}})??{text:'',hasSelection:false};
  const table=useEditorState({editor,selector:({editor}):TableState=>editor?({active:editor.isActive('table'),borderless:Boolean(editor.getAttributes('table').borderless),canMerge:editor.can().mergeCells(),canSplit:editor.can().splitCell(),canDeleteRow:editor.can().deleteRow(),canDeleteColumn:editor.can().deleteColumn(),canDeleteTable:editor.can().deleteTable()}):({active:false,borderless:false,canMerge:false,canSplit:false,canDeleteRow:false,canDeleteColumn:false,canDeleteTable:false})})??{active:false,borderless:false,canMerge:false,canSplit:false,canDeleteRow:false,canDeleteColumn:false,canDeleteTable:false};
+ const colors=useEditorState({editor,selector:({editor}):ColorState=>{
+  if(!editor)return {color:null,highlight:null,cellColor:null,inCell:false};
+  const inCell=editor.isActive('tableCell')||editor.isActive('tableHeader');
+  const cell=editor.getAttributes(editor.isActive('tableHeader')?'tableHeader':'tableCell');
+  const style=editor.getAttributes('textStyle');
+  return {color:style.color??null,highlight:style.backgroundColor??null,cellColor:inCell?cell.backgroundColor??null:null,inCell};
+ }})??{color:null,highlight:null,cellColor:null,inCell:false};
+ const selectedImage=useEditorState({editor,selector:({editor}):EditorImageData|null=>{
+  if(!editor||!(editor.state.selection instanceof NodeSelection)||!['editorImage','centerImageWrap'].includes(editor.state.selection.node.type.name)||editor.state.selection.node.attrs.kind==='video')return null;
+  return editor.state.selection.node.attrs as EditorImageData;
+ }})??null;
+ const selectedVideo=useEditorState({editor,selector:({editor}):EditorVideoData|null=>{
+  if(!editor||!(editor.state.selection instanceof NodeSelection)||!['editorVideo','centerImageWrap'].includes(editor.state.selection.node.type.name)||editor.state.selection.node.attrs.kind!=='video')return null;
+  return editor.state.selection.node.attrs as EditorVideoData;
+ }})??null;
  useEffect(()=>{if(editor&&editor.isEditable===disabled)editor.setEditable(!disabled,false);},[editor,disabled]);
  useEffect(()=>{
   if(!editor||value===lastEditorText.current)return;
@@ -225,7 +277,20 @@ export function useTextDocument({value,onChange,disabled,placeholder,onFocus,onB
   if(tool==='italic')command.toggleItalic().run();
   if(tool==='underline')command.toggleUnderline().run();
   if(tool==='strike')command.toggleStrike().run();
+  if(tool==='code')command.toggleCode().run();
   if(tool==='clear')command.unsetAllMarks().run();
+ };
+ const insertSymbol=(symbol:string)=>{
+  if(!editor||disabled||!symbol)return false;
+  return editor.chain().focus().insertContent(symbol).run();
+ };
+ const applyColor=(tool:ColorTool,color:string|null)=>{
+  if(!editor||disabled)return false;
+  const command=editor.chain().focus();
+  if(tool==='color')return color?command.setColor(color).run():command.unsetColor().run();
+  if(tool==='highlight')return color?command.setBackgroundColor(color).run():command.unsetBackgroundColor().run();
+  if(!colors.inCell)return false;
+  return command.setCellAttribute('backgroundColor',color).run();
  };
  const applyParagraph=(tool:ParagraphTool,value?:string)=>{
   if(!editor||disabled)return;
@@ -276,6 +341,47 @@ export function useTextDocument({value,onChange,disabled,placeholder,onFocus,onB
   if(action==='deleteTable')return command.deleteTable().run();
   return false;
  };
+ const insertImage=(data:EditorImageData)=>{
+  if(!editor||disabled)return false;
+  if(!editor.chain().focus().insertContent({type:'editorImage',attrs:data}).run())return false;
+  if(data.layout==='wrap'){
+   const selection=editor.state.selection;
+   const before=selection.$from.nodeBefore;
+   if(before?.type.name==='editorImage'){
+    const position=()=>selection.from-before.nodeSize;
+    if(data.align==='center')convertImageToCenterWrap(editor,position,data);
+    else alignMediaAtBlockStart(editor,position,data,'editorImage');
+   }
+  }
+  return true;
+ };
+ const insertVideo=(data:EditorVideoData)=>{
+  if(!editor||disabled)return false;
+  if(!editor.chain().focus().insertContent({type:'editorVideo',attrs:data}).run())return false;
+  if(data.layout==='wrap'){
+   const selection=editor.state.selection;
+   const before=selection.$from.nodeBefore;
+   if(before?.type.name==='editorVideo'){
+    const position=()=>selection.from-before.nodeSize;
+    if(data.align==='center')convertVideoToCenterWrap(editor,position,data);
+    else alignMediaAtBlockStart(editor,position,data,'editorVideo');
+   }
+  }
+  return true;
+ };
+ const insertSeoImageSlot=(variant:SeoImageVariant)=>{
+  if(!editor||disabled)return false;
+  const content={type:'seoImageSlot',attrs:{variant,images:[],text:''},...(variant==='image-text'?{content:[{type:'paragraph'},{type:'paragraph'},{type:'paragraph'}]}:{})};
+  const selection=editor.state.selection;
+  for(let depth=selection.$from.depth;depth>0;depth--){
+   if(selection.$from.node(depth).type.name==='seoImageSlot'){
+    return editor.chain().focus().insertContentAt(selection.$from.after(depth),content).run();
+   }
+  }
+  return selection instanceof NodeSelection
+   ?editor.chain().focus().insertContentAt(selection.to,content).run()
+   :editor.chain().focus().insertContent(content).run();
+ };
  const search=(options:SearchOptions,requestedIndex=0):SearchSnapshot=>{
   if(!editor)return {matches:0,activeIndex:0};
   const result=findMatches(editor,options);
@@ -313,5 +419,5 @@ export function useTextDocument({value,onChange,disabled,placeholder,onFocus,onB
    return document.execCommand(action);
   }
  };
- return {editor,format,inline,paragraph,link,table,apply,applyInline,applyParagraph,applyLink,createAnchor,deleteAnchor,renameAnchor,updateLinks,insertTable,applyTable,search,replaceSearch,clearSearch,editingAction};
+ return {editor,format,inline,paragraph,link,table,colors,selectedImage,selectedVideo,apply,applyInline,insertSymbol,applyColor,applyParagraph,applyLink,createAnchor,deleteAnchor,renameAnchor,updateLinks,insertTable,applyTable,insertImage,insertVideo,insertSeoImageSlot,search,replaceSearch,clearSearch,editingAction};
 }

@@ -1,12 +1,19 @@
 import React, {useEffect, useId, useRef, useState, type ReactNode} from 'react';
-import {Button, Input, InputNumber, Segmented, Popover, Checkbox, Modal, Tooltip} from 'antd';
+import {Button, Input, InputNumber, Segmented, Popover, Checkbox, Modal, Tooltip, Upload, Tabs, Image as AntImage} from 'antd';
 import {icons} from './all-assets';
 import {panelAssets} from './panel-assets';
 import './panels.css';
 import './link-tools.css';
 import './table-tools.css';
+import './image-tools.css';
+import './video-tools.css';
 import {FormatPanel, defaultFormat, type FormatTool} from './TextFormatting';
-import type {InlineFormat, InlineTool, ParagraphFormat, ParagraphTool, SearchOptions, SearchSnapshot, TableAction, TableState} from './useTextDocument';
+import type {InlineFormat, InlineTool, ParagraphFormat, ParagraphTool, SearchOptions, SearchSnapshot, TableAction, TableState, ColorState, ColorTool} from './useTextDocument';
+import {ColorPanel} from './ColorTools';
+import type {EditorImageData, ImageLayout, ImageAlignment} from './EditorImage';
+import type {EditorVideoData} from './EditorVideo';
+import {parseVideoSource} from './VideoPlayer';
+import {SeoImageChoice, type SeoImageVariant} from './SeoImageSlot';
 import {createEntryId, useLinkLibrary, type AnchorEntry, type LinkEntry, type UrlLinkEntry} from './linkLibrary';
 
 export type ToolId = 'textType'|'font'|'fontSize'|'color'|'highlight'|'cellColor'|'fillColor'|'alignment'|'list'|'paragraph'|'lineHeight'|'link'|'anchor'|'table'|'image'|'video'|'symbol'|'search'|'more';
@@ -16,11 +23,19 @@ export const panelForIcon:Record<string,ToolId>={IconTextTypeOutlined:'textType'
 export type LinkPanelActions={selectionText:string;hasSelection:boolean;applyLink:(href:string)=>void;createAnchor:(anchorId:string,label:string)=>void;deleteAnchor:(anchorId:string)=>void;renameAnchor:(anchorId:string,label:string)=>void;updateLinks:(oldHref:string,newHref:string)=>void};
 export type SearchPanelActions={search:(options:SearchOptions,index?:number)=>SearchSnapshot;replace:(options:SearchOptions,replacement:string,index:number,all?:boolean)=>SearchSnapshot;clear:()=>void};
 export type TablePanelActions={state:TableState;insert:(columns:number,rows:number,withHeaderRow:boolean)=>boolean;apply:(action:TableAction)=>boolean};
+export type ImagePanelActions={selected:EditorImageData|null;insert:(data:EditorImageData)=>boolean};
+export type SeoImageActions={insert:(variant:SeoImageVariant)=>boolean};
+export type VideoPanelActions={selected:EditorVideoData|null;insert:(data:EditorVideoData)=>boolean};
+export type ColorPanelActions={state:ColorState;apply:(tool:ColorTool,color:string|null)=>void};
+export type SymbolPanelActions={insert:(symbol:string)=>boolean};
+const colorMenuItems:[ColorTool,string,string][]=[['color','Цвет текста','imgIconFontColorsOutlined'],['highlight','Цвет подчеркивания','imgIconHighlightOutlined'],['cellColor','Цвет фона ячейки','imgIconFormatPainterOutlined']];
+function ColorMenu({onSelect}:{onSelect:(tool:ColorTool)=>void}){return <div className="color-tool-menu">{colorMenuItems.map(([tool,label,icon])=><button key={tool} type="button" onMouseDown={event=>event.preventDefault()} onClick={()=>onSelect(tool)}><img src={panelAssets['6716:89154'][icon]} alt=""/>{label}</button>)}</div>;}
 
-export function PanelTrigger({tool,children,disabled=false,value,onApply,linkActions,searchActions,tableActions}:{tool:ToolId;children:ReactNode;disabled?:boolean;value?:string;onApply?:(value:string)=>void;linkActions?:LinkPanelActions;searchActions?:SearchPanelActions;tableActions?:TablePanelActions}){
+export function PanelTrigger({tool,children,disabled=false,value,onApply,linkActions,searchActions,tableActions,imageActions,videoActions,imageMode='standard',seoImageActions,colorActions,symbolActions}:{tool:ToolId;children:ReactNode;disabled?:boolean;value?:string;onApply?:(value:string)=>void;linkActions?:LinkPanelActions;searchActions?:SearchPanelActions;tableActions?:TablePanelActions;imageActions?:ImagePanelActions;videoActions?:VideoPanelActions;imageMode?:'standard'|'seo';seoImageActions?:SeoImageActions;colorActions?:ColorPanelActions;symbolActions?:SymbolPanelActions}){
  const [open,setOpen]=useState(false);
+ const [colorView,setColorView]=useState<ColorTool|null>(null);
  const holder=useRef<HTMLSpanElement>(null);
- const close=()=>{setOpen(false);holder.current?.querySelector<HTMLElement>('button,input')?.focus();};
+ const close=()=>{setOpen(false);setColorView(null);holder.current?.querySelector<HTMLElement>('button,input')?.focus();};
  useEffect(()=>{
   if(!open||tool==='link')return;
   const dismiss=(event:MouseEvent)=>{const target=event.target;if(target instanceof Element&&!holder.current?.contains(target)&&!target.closest(`.panel-${tool}`))setOpen(false);};
@@ -29,7 +44,9 @@ export function PanelTrigger({tool,children,disabled=false,value,onApply,linkAct
   document.addEventListener('editor-dismiss-popovers',dismissFromEditor);
   return()=>{document.removeEventListener('click',dismiss,true);document.removeEventListener('editor-dismiss-popovers',dismissFromEditor);};
  },[open,tool]);
- return <Popover trigger="click" placement="bottom" arrow={{pointAtCenter:true}} open={open&&!disabled} onOpenChange={next=>{if(next||tool!=='link')setOpen(next);}} destroyOnHidden overlayClassName={`editor-popover panel-${tool}`} content={<div role="dialog" aria-label={toolLabels[tool]} onKeyDown={e=>{if(e.key==='Escape'){e.stopPropagation();close();}}}><PanelContent key={`${tool}-${value??''}`} tool={tool} close={close} value={value} onApply={onApply} linkActions={linkActions} searchActions={searchActions} tableActions={tableActions}/></div>}><span ref={holder} className="panel-trigger" data-open={open&&!disabled} onKeyDown={e=>{if(e.key==='Escape'){e.stopPropagation();setOpen(false);}}}>{children}</span></Popover>;
+ const colorTool=tool==='fillColor'?colorView:tool==='color'||tool==='highlight'||tool==='cellColor'?tool:null;
+ const colorContent=colorTool?<div className={tool==='fillColor'?'color-tool-subpanel':''}>{tool==='fillColor'&&<button type="button" className="compact-back" onClick={()=>setColorView(null)}><span aria-hidden="true">‹</span>К выбору цвета</button>}<ColorPanel key={`${colorTool}-${open}`} tool={colorTool} value={colorActions?.state[colorTool]??null} deferred={tool==='fillColor'} onDone={close} onApply={(selected,color)=>colorActions?.apply(selected,color)}/></div>:<ColorMenu onSelect={setColorView}/>;
+ return <Popover trigger="click" placement={tool==='image'&&imageMode==='seo'?'bottomRight':'bottom'} arrow={{pointAtCenter:true}} open={open&&!disabled} onOpenChange={next=>{if(next||tool!=='link')setOpen(next);if(!next)setColorView(null);}} destroyOnHidden overlayClassName={`editor-popover panel-${tool}`} content={<div role="dialog" aria-label={toolLabels[tool]} onKeyDown={e=>{if(e.key==='Escape'){e.stopPropagation();close();}}}>{colorTool||tool==='fillColor'?colorContent:<PanelContent key={`${tool}-${value??''}-${imageMode}`} tool={tool} close={close} value={value} onApply={onApply} linkActions={linkActions} searchActions={searchActions} tableActions={tableActions} imageActions={imageActions} videoActions={videoActions} imageMode={imageMode} seoImageActions={seoImageActions} symbolActions={symbolActions}/>}</div>}><span ref={holder} className="panel-trigger" data-open={open&&!disabled} onKeyDown={e=>{if(e.key==='Escape'){e.stopPropagation();setOpen(false);}}}>{children}</span></Popover>;
 }
 
 export function PanelField({label,placeholder='Введите',required=false,children}:{label?:string;placeholder?:string;required?:boolean;children?:ReactNode}){
@@ -39,10 +56,6 @@ export function PanelField({label,placeholder='Введите',required=false,ch
 function Footer({close,onAction,action='Применить',disabled=false}:{close:()=>void;onAction?:()=>void;action?:string;disabled?:boolean}){return <div className="panel-footer"><Button onMouseDown={event=>event.preventDefault()} onClick={close}>Отменить</Button><Button type="primary" onMouseDown={event=>event.preventDefault()} onClick={onAction} disabled={disabled}>{action}</Button></div>;}
 const Asset=({node,name,className='panel-icon'}:{node:string;name:string;className?:string})=><img className={className} src={panelAssets[node]?.[name]} alt=""/>;
 function CatalogFormatPanel({tool,close}:{tool:FormatTool;close:()=>void}){const [value,setValue]=useState(defaultFormat[tool]);return <FormatPanel tool={tool} value={value} onCancel={close} onApply={v=>{setValue(v);close();}}/>;}
-function ColorPanel({tool}:{tool:ToolId}){
- const swatches=['#000','#1f1f1f','#595959','#8c8c8c','#bfbfbf','#d9d9d9','#e8e8e8','#eee','#f5f5f5','#fff','#ff4d4f','#fa8c16','#fadb14','#a0d911','#52c41a','#13c2c2','#1677ff','#2f54eb','#722ed1','#eb2f96','#ffccc7','#ffe7ba','#fff1b8','#eaff8f','#d9f7be','#b5f5ec','#bae0ff','#d6e4ff','#efdbff','#ffd6e7'];
- return <div className="tool-panel color-panel"><div className="panel-title-row"><h2>{tool==='fillColor'?'Цвет текста':'Цвет'}</h2><button className="clear-color" aria-label="Сбросить цвет"><Asset node="6716:88899" name="imgColor"/></button></div><Asset node="6716:88899" name="imgColorPickerColorPickerPalette" className="color-palette"/><div className="color-controls"><div className="color-sliders"><Asset node="6716:88899" name="imgColorPickerColorPickerPaletteSlider" className="color-hue"/><div className="color-alpha"><Asset node="6716:88899" name="imgSliderHandle"/></div></div><span className="color-preview"/></div><div className="color-values"><span>HEX <img src={icons.imgIconDownOutlined} alt=""/></span><Input size="small" defaultValue="1677FF" prefix="#" aria-label="HEX цвета"/><Input size="small" defaultValue="3" aria-label="Прозрачность"/></div><div className="color-presets"><div className="color-caption"><img src={icons.imgIconDownOutlined} alt=""/>Recommended</div><div className="color-swatches">{swatches.map((c,i)=><button key={i} type="button" aria-label={`Цвет ${c}`} style={{backgroundColor:c}}>{i===16&&<Asset node="6716:88899" name="imgCheck"/>}</button>)}</div><div className="color-caption"><img src={icons.imgIconDownOutlined} alt=""/>Recent</div><span className="color-empty">Empty</span></div></div>;
-}
 function MenuPanel({tool,value,onSelect}:{tool:'alignment'|'list'|'more';value?:string;onSelect?:(value:string)=>void}){
  const rows=tool==='alignment'?[['imgIconAlignLeftOutlined1','Выравнивание по левому краю'],['imgIconAlignCenterOutlined','Выравнивание по центру'],['imgIconAlignRightOutlined','Выравнивание по правому краю'],['imgIconAlignJustifiedOutlined','Выравнивание по ширине']]:tool==='list'?[['imgIconOrderedListOutlined1','Нумерованный список'],['imgIconBarsOutlined','Маркированный список']]:[['imgIconBoldOutlined','Жирный текст'],['imgIconItalicOutlined','Курсивный текст'],['imgIconUnderlineOutlined','Подчеркнутый текст'],['imgIconStrikethroughOutlined','Зачеркнутый текст'],['imgIconClearOutlined','Очистка форматирования'],['imgIconFontColorsOutlined','Цвет текста'],['imgIconHighlightOutlined','Цвет подчеркивания'],['imgIconFormatPainterOutlined','Цвет фона ячейки']];
  const values=tool==='alignment'?['left','center','right','justify']:tool==='list'?['ordered','bullet']:rows.map((_,index)=>String(index));
@@ -132,8 +145,8 @@ function AnchorPanel({close,actions}:{close:()=>void;actions?:LinkPanelActions})
  return <div className="tool-panel link-panel"><h2>Якорь</h2><PanelField label="Название" required><div className="link-combobox"><Input value={query} aria-label="Название" allowClear={{clearIcon:<img className="link-input-clear" src="/icons/c3be5.svg" alt=""/>}} onFocus={()=>setShowList(true)} onChange={event=>{setQuery(event.target.value);setSelectedId(undefined);setShowList(true);}} onPressEnter={query.trim()?submit:undefined}/>{showList&&filtered.length>0&&<LibraryRows entries={filtered} showAnchorIcon={false} onChoose={entry=>{setSelectedId(entry.id);setQuery(entry.label);setShowList(false);}} onEdit={entry=>{setEditing(entry as AnchorEntry);setQuery(entry.label);}} onDelete={del}/>}</div></PanelField><Footer close={close} onAction={submit} action="Добавить" disabled={!query.trim()}/></div>;
 }
 
-type CompactView='main'|'alignment'|'list'|'paragraph'|'lineHeight';
-export function CompactToolsTrigger({children,disabled=false,inline,paragraph,onInlineAction,onParagraphAction}:{children:ReactNode;disabled?:boolean;inline:InlineFormat;paragraph:ParagraphFormat;onInlineAction:(tool:InlineTool)=>void;onParagraphAction:(tool:ParagraphTool,value?:string)=>void}){
+type CompactView='main'|'alignment'|'list'|'paragraph'|'lineHeight'|ColorTool;
+export function CompactToolsTrigger({children,disabled=false,inline,paragraph,colorActions,onInlineAction,onParagraphAction}:{children:ReactNode;disabled?:boolean;inline:InlineFormat;paragraph:ParagraphFormat;colorActions?:ColorPanelActions;onInlineAction:(tool:InlineTool)=>void;onParagraphAction:(tool:ParagraphTool,value?:string)=>void}){
  const [open,setOpen]=useState(false),[view,setView]=useState<CompactView>('main');
  const holder=useRef<HTMLSpanElement>(null);
  const close=()=>{setOpen(false);setView('main');};
@@ -150,16 +163,78 @@ export function CompactToolsTrigger({children,disabled=false,inline,paragraph,on
   :view==='list'?<div className="compact-subpanel">{back}<MenuPanel tool="list" value={paragraph.list} onSelect={value=>{onParagraphAction('list',value);close();}}/></div>
   :view==='paragraph'?<div className="compact-subpanel">{back}<SpacingPanel tool="paragraph" value={paragraph.lineSpacing} close={close} onApply={value=>onParagraphAction('lineSpacing',value)}/></div>
   :view==='lineHeight'?<div className="compact-subpanel">{back}<SpacingPanel tool="lineHeight" value={paragraph.paragraphSpacing} close={close} onApply={value=>onParagraphAction('paragraphSpacing',value)}/></div>
-  :<CompactMain inline={inline} paragraph={paragraph} onInline={tool=>{onInlineAction(tool);if(tool==='clear')close();}} onParagraph={(tool,next)=>{if(next)setView(next);else{onParagraphAction(tool);close();}}}/>;
+  :view==='color'||view==='highlight'||view==='cellColor'?<div className="color-tool-subpanel">{back}<ColorPanel key={view} tool={view} value={colorActions?.state[view]??null} onApply={(selected,color)=>colorActions?.apply(selected,color)}/></div>
+  :<CompactMain inline={inline} paragraph={paragraph} onInline={tool=>{onInlineAction(tool);if(tool==='clear')close();}} onParagraph={(tool,next)=>{if(next)setView(next);else{onParagraphAction(tool);close();}}} onColor={setView}/>;
  return <Popover trigger="click" placement="bottom" arrow={{pointAtCenter:true}} open={open&&!disabled} onOpenChange={next=>{setOpen(next);if(!next)setView('main');}} overlayClassName="editor-popover panel-more" content={<div role="dialog" aria-label="Дополнительные инструменты" onKeyDown={event=>{if(event.key==='Escape'){event.stopPropagation();close();}}}>{content}</div>}><span ref={holder} className="panel-trigger" data-open={open&&!disabled}>{children}</span></Popover>;
 }
 
-function CompactMain({inline,paragraph,onInline,onParagraph}:{inline:InlineFormat;paragraph:ParagraphFormat;onInline:(tool:InlineTool)=>void;onParagraph:(tool:ParagraphTool,next?:CompactView)=>void}){
- const inlineRows:[InlineTool,string,string][]=[['bold','IconBoldOutlined','Жирный текст'],['italic','IconItalicOutlined','Курсивный текст'],['underline','IconUnderlineOutlined','Подчеркнутый текст'],['strike','IconStrikethroughOutlined','Зачеркнутый текст'],['clear','IconClearOutlined','Очистка форматирования']];
+function CompactMain({inline,paragraph,onInline,onParagraph,onColor}:{inline:InlineFormat;paragraph:ParagraphFormat;onInline:(tool:InlineTool)=>void;onParagraph:(tool:ParagraphTool,next?:CompactView)=>void;onColor:(tool:ColorTool)=>void}){
+ const inlineRows:[InlineTool,string,string][]=[['bold','IconBoldOutlined','Жирный текст'],['italic','IconItalicOutlined','Курсивный текст'],['underline','IconUnderlineOutlined','Подчеркнутый текст'],['strike','IconStrikethroughOutlined','Зачеркнутый текст'],['code','IconCodeOutlined','Код'],['clear','IconClearOutlined','Очистка форматирования']];
  const paragraphRows:[ParagraphTool,string,string,CompactView?][]=[['alignment','IconAlignLeftOutlined','Выравнивание','alignment'],['list','IconOrderedListOutlined','Список','list'],['shiftRight','IconMenuUnfoldOutlined','Сместить вправо'],['shiftLeft','IconMenuFoldOutlined','Сместить влево'],['lineSpacing','StateDefaultSizeDefault1','Межстрочное расстояние','paragraph'],['paragraphSpacing','StateDefaultSizeDefault','Расстояние между абзацами','lineHeight']];
- return <div className="tool-panel menu-panel more-panel compact-tools"><div className="panel-menu">{inlineRows.map(([id,icon,label])=><button type="button" key={id} aria-pressed={id==='clear'?undefined:inline[id]} className={id!=='clear'&&inline[id]?'is-active':''} onMouseDown={event=>event.preventDefault()} onClick={()=>onInline(id)}><img className="panel-icon" src={icons['img'+icon]} alt=""/><span>{label}</span></button>)}{paragraphRows.map(([id,icon,label,next],index)=><button type="button" key={id} className={index===0?'menu-divider':''} onMouseDown={event=>event.preventDefault()} onClick={()=>onParagraph(id,next)}><img className="panel-icon" src={icons['img'+icon]} alt=""/><span>{label}</span>{next&&<span className="compact-chevron" aria-hidden="true">›</span>}</button>)}</div></div>;
+ return <div className="tool-panel menu-panel more-panel compact-tools"><div className="panel-menu">{inlineRows.map(([id,icon,label])=><button type="button" key={id} aria-pressed={id==='clear'?undefined:inline[id]} className={id!=='clear'&&inline[id]?'is-active':''} onMouseDown={event=>event.preventDefault()} onClick={()=>onInline(id)}><img className="panel-icon" src={icons['img'+icon]} alt=""/><span>{label}</span></button>)}{paragraphRows.map(([id,icon,label,next],index)=><button type="button" key={id} className={index===0?'menu-divider':''} onMouseDown={event=>event.preventDefault()} onClick={()=>onParagraph(id,next)}><img className="panel-icon" src={icons['img'+icon]} alt=""/><span>{label}</span>{next&&<span className="compact-chevron" aria-hidden="true">›</span>}</button>)}{colorMenuItems.map(([id,label,icon],index)=><button type="button" key={id} className={index===0?'menu-divider':''} onMouseDown={event=>event.preventDefault()} onClick={()=>onColor(id)}><img className="panel-icon" src={panelAssets['6716:89154'][icon]} alt=""/><span>{label}</span><span className="compact-chevron" aria-hidden="true">›</span></button>)}</div></div>;
 }
-function MediaTools({video=false}:{video?:boolean}){const node=video?'6716:89115':'6716:89102';return <div className="media-tools">{['imgIconSplitTextOutlined','imgIconInTextOutlined','imgIconMoveTextOutlined','divider','imgIconPositionLeftOutlined','imgIconPositionCenterOutlined','imgIconPositionRightOutlined'].map((name,i)=>name==='divider'?<span className="media-divider" key={name}/>:<button type="button" key={name} aria-label={['Разрыв текста','В тексте','Обтекание','','Слева','По центру','Справа'][i]}><Asset node={node} name={name}/></button>)}</div>;}
+const blankImage:EditorImageData={src:'',name:'',width:null,height:null,href:'',originalSize:false,layout:'inline',align:'left'};
+const mediaAlignmentOptions:{value:ImageAlignment;label:string;icon:string;activeIcon:string}[]=[
+ {value:'left',label:'По левому краю',icon:'/icons/794cb.svg',activeIcon:'/icons/794cb.svg'},
+ {value:'center',label:'По центру',icon:'/icons/de18f.svg',activeIcon:'/icons/position-center-active.svg'},
+ {value:'right',label:'По правому краю',icon:'/icons/0efc1.svg',activeIcon:'/icons/position-right-active.svg'},
+];
+function imageData(file:File):Promise<string>{return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>typeof reader.result==='string'?resolve(reader.result):reject(new Error('Не удалось прочитать файл'));reader.onerror=()=>reject(new Error('Не удалось прочитать файл'));reader.readAsDataURL(file);});}
+export function ImagePanel({close,actions}:{close:()=>void;actions?:ImagePanelActions}){
+ const [draft,setDraft]=useState<EditorImageData>(actions?.selected??blankImage);
+ const [error,setError]=useState('');
+ const set=<K extends keyof EditorImageData>(key:K,value:EditorImageData[K])=>setDraft(current=>({...current,[key]:value}));
+ const upload=(file:File)=>{
+  if(!['image/png','image/jpeg','image/webp','image/gif'].includes(file.type)){setError('Выберите PNG, JPEG, WebP или GIF');return Upload.LIST_IGNORE;}
+  setError('');
+  void imageData(file).then(src=>setDraft(current=>({...current,src,name:file.name,width:null,height:null,originalSize:true}))).catch(()=>setError('Не удалось прочитать изображение'));
+  return false;
+ };
+ const href=draft.href.trim();
+ const linkValid=!href||validUrl(href);
+ const submit=()=>{if(draft.src&&linkValid&&actions?.insert({...draft,href}))close();};
+ const layoutOptions:{value:ImageLayout;label:string;icon:string;activeIcon:string}[]=[{value:'break',label:'Разбить текст',icon:'/icons/ee97a.svg',activeIcon:'/icons/da9b9.svg'},{value:'inline',label:'В один ряд',icon:'/icons/96b0d.svg',activeIcon:'/icons/3b8c4.svg'},{value:'wrap',label:'Заливка области',icon:'/icons/13250.svg',activeIcon:'/icons/a96d5.svg'}];
+ return <div className="tool-panel image-panel">
+  <h2>Настройка изображения</h2>
+  <div className="media-tools image-mode-tools" role="group" aria-label="Размещение изображения">
+   {layoutOptions.map(option=><Tooltip key={option.value} title={option.label}><button type="button" aria-label={option.label} aria-pressed={draft.layout===option.value} className={draft.layout===option.value?'is-active':''} onMouseDown={event=>event.preventDefault()} onClick={()=>set('layout',option.value)}><span className="image-layout-icon"><img className="panel-icon image-layout-default" src={option.icon} alt=""/><img className="panel-icon image-layout-emphasis" src={option.activeIcon} alt=""/></span></button></Tooltip>)}
+   <span className="media-divider" aria-hidden="true"/>
+   {mediaAlignmentOptions.map(option=><Tooltip key={option.value} title={option.label}><button type="button" aria-label={option.label} aria-pressed={draft.align===option.value} data-align={option.value} className={`image-align-button ${draft.align===option.value?'is-active':''}`} onMouseDown={event=>event.preventDefault()} onClick={()=>set('align',option.value)}><span className="image-layout-icon"><img className="panel-icon image-layout-default" src={option.icon} alt=""/><img className="panel-icon image-layout-emphasis" src={option.activeIcon} alt=""/></span></button></Tooltip>)}
+  </div>
+  {draft.src?<div className="image-uploaded"><AntImage src={draft.src} alt={draft.name} width={48} height={48} preview={false}/><span title={draft.name}>{draft.name}</span><Button type="text" aria-label="Удалить загруженное изображение" onClick={()=>setDraft(current=>({...current,src:'',name:''}))}><Asset node="6716:89089" name="imgIconDeleteOutlined"/></Button><Tooltip title="PNG, JPEG, WebP или GIF"><span className="image-upload-hint" tabIndex={0} aria-label="Поддерживаются PNG, JPEG, WebP и GIF"><Asset node="6716:89102" name="imgIconInfoCircleOutlined"/></span></Tooltip></div>:<div className="image-upload-wrap"><Upload accept="image/png,image/jpeg,image/webp,image/gif" beforeUpload={upload} showUploadList={false}><Button className="upload-placeholder"><Asset node="6716:89102" name="imgIconUploadOutlined"/>Загрузить изображение</Button></Upload><Tooltip title="PNG, JPEG, WebP или GIF"><span className="image-upload-hint" tabIndex={0} aria-label="Поддерживаются PNG, JPEG, WebP и GIF"><Asset node="6716:89102" name="imgIconInfoCircleOutlined"/></span></Tooltip></div>}
+  {error&&<div className="image-panel-error" role="alert">{error}</div>}
+  <PanelField label="Высота"><div className="image-size-control"><Input inputMode="numeric" value={draft.height??''} disabled={draft.originalSize} onChange={event=>{const value=event.target.value;if(/^\d*$/.test(value)&&Number(value)<=10000)set('height',value?Number(value):null);}} placeholder="Введите" aria-label="Высота"/><span>px</span></div></PanelField>
+  <PanelField label="Ширина"><div className="image-size-control"><Input inputMode="numeric" value={draft.width??''} disabled={draft.originalSize} onChange={event=>{const value=event.target.value;if(/^\d*$/.test(value)&&Number(value)<=10000)set('width',value?Number(value):null);}} placeholder="Введите" aria-label="Ширина"/><span>px</span></div></PanelField>
+  <PanelField label="Ссылка для перехода по изображению"><Input value={draft.href} status={linkValid?undefined:'error'} onChange={event=>set('href',event.target.value)} placeholder="Введите" allowClear aria-label="Ссылка для перехода по изображению"/></PanelField>
+  <Checkbox checked={draft.originalSize} onChange={event=>set('originalSize',event.target.checked)}>Использовать оригинальный размер изображения</Checkbox>
+  <Footer close={close} action={actions?.selected?'Сохранить':'Добавить'} onAction={submit} disabled={!draft.src||!linkValid||draft.width===0||draft.height===0}/>
+ </div>;
+}
+
+const blankVideo:EditorVideoData={src:'',width:null,height:null,originalSize:false,layout:'inline',align:'left',muted:false,kind:'video'};
+export function VideoPanel({close,actions}:{close:()=>void;actions?:VideoPanelActions}){
+ const linkId=useId();
+ const [draft,setDraft]=useState<EditorVideoData>(actions?.selected??blankVideo);
+ const set=<K extends keyof EditorVideoData>(key:K,value:EditorVideoData[K])=>setDraft(current=>({...current,[key]:value}));
+ const source=parseVideoSource(draft.src);
+ const valid=Boolean(source)&&draft.width!==0&&draft.height!==0;
+ const submit=()=>{if(valid&&actions?.insert({...draft,src:draft.src.trim()}))close();};
+ const layoutOptions:{value:ImageLayout;label:string;icon:string;activeIcon:string}[]=[{value:'break',label:'Разбить текст',icon:'imgIconSplitTextOutlined',activeIcon:'/icons/da9b9.svg'},{value:'inline',label:'В один ряд',icon:'imgIconInTextOutlined',activeIcon:'/icons/96b0d.svg'},{value:'wrap',label:'Заливка области',icon:'imgIconMoveTextOutlined',activeIcon:'/icons/a96d5.svg'}];
+ return <div className="tool-panel video-panel">
+  <h2>Настройка видео</h2>
+  <div className="media-tools image-mode-tools" role="group" aria-label="Размещение видео">
+   {layoutOptions.map(option=><Tooltip key={option.value} title={option.label}><button type="button" aria-label={option.label} aria-pressed={draft.layout===option.value} className={draft.layout===option.value?'is-active':''} onMouseDown={event=>event.preventDefault()} onClick={()=>set('layout',option.value)}><img className="panel-icon" src={draft.layout===option.value?option.activeIcon:panelAssets['6716:89115'][option.icon]} alt=""/></button></Tooltip>)}
+   <span className="media-divider" aria-hidden="true"/>
+   {mediaAlignmentOptions.map(option=><Tooltip key={option.value} title={option.label}><button type="button" aria-label={option.label} aria-pressed={draft.align===option.value} data-align={option.value} className={`image-align-button ${draft.align===option.value?'is-active':''}`} onMouseDown={event=>event.preventDefault()} onClick={()=>set('align',option.value)}><span className="image-layout-icon"><img className="panel-icon image-layout-default" src={option.icon} alt=""/><img className="panel-icon image-layout-emphasis" src={option.activeIcon} alt=""/></span></button></Tooltip>)}
+  </div>
+  <PanelField label="Высота"><div className="image-size-control"><Input inputMode="numeric" value={draft.height??''} disabled={draft.originalSize} onChange={event=>{const value=event.target.value;if(/^\d*$/.test(value)&&Number(value)<=10000)set('height',value?Number(value):null);}} placeholder="Введите" aria-label="Высота"/><span>px</span></div></PanelField>
+  <PanelField label="Ширина"><div className="image-size-control"><Input inputMode="numeric" value={draft.width??''} disabled={draft.originalSize} onChange={event=>{const value=event.target.value;if(/^\d*$/.test(value)&&Number(value)<=10000)set('width',value?Number(value):null);}} placeholder="Введите" aria-label="Ширина"/><span>px</span></div></PanelField>
+  <div className="panel-field"><div className="video-link-label"><label htmlFor={linkId}><span className="required">* </span>Ссылка на видео</label><Tooltip title="Поддерживаются ссылки YouTube, Vimeo и прямые ссылки на MP4, WebM, OGG"><span className="video-link-hint" tabIndex={0} role="img" aria-label="Поддерживаемые ссылки"><Asset node="6716:89115" name="imgIconInfoCircleOutlined"/></span></Tooltip></div><Input id={linkId} value={draft.src} status={draft.src.trim()&&!source?'error':undefined} onChange={event=>set('src',event.target.value)} placeholder="Введите значение" allowClear aria-label="Ссылка на видео"/></div>
+  {draft.src.trim()&&!source&&<span className="video-panel-error" role="alert">Введите ссылку на YouTube, Vimeo или видеофайл MP4, WebM, OGG</span>}
+  <Checkbox checked={draft.originalSize} onChange={event=>set('originalSize',event.target.checked)}>Использовать оригинальный размер видео</Checkbox>
+  <Footer close={close} action={actions?.selected?'Сохранить':'Добавить'} onAction={submit} disabled={!valid}/>
+ </div>;
+}
 const regexHint='Позволяют задать шаблон поиска, например, искать любое число (\\d+) или слово, начинающееся с заглавной буквы ([A-Z]\\w+)';
 const diacriticsHint='Поиск не будет учитывать надстрочные/подстрочные знаки (например, é = e, ñ = n). Поиск «cafe» найдет также «café», если включена опция игнорирования диакритики.';
 function SearchPanel({actions}:{actions?:SearchPanelActions}){
@@ -220,16 +295,25 @@ function TablePanel({close,actions}:{close:()=>void;actions?:TablePanelActions})
  </div>;
 }
 
-export function PanelContent({tool,close,value,onApply,linkActions,searchActions,tableActions}:{tool:ToolId;close:()=>void;value?:string;onApply?:(value:string)=>void;linkActions?:LinkPanelActions;searchActions?:SearchPanelActions;tableActions?:TablePanelActions}){
+const specialSymbols=Array.from('‐‑‒–—―‘’‚‛“”„‟¡¿§©®™†‡•‣․‥…‧‰‱′″‴‵‶‸‹›´µ¶·«»¼½¾℃№ﬀﬁﬂﬃﬄﬅﬆ←↑→↓↔↕↖↗↘↙⁰¹²³⁴⁵⁶⁷⁸⁹⁻⁼⁽⁺⁾ⁿⁱ');
+const commonEmoji='😀 😃 😄 😁 😆 😅 😂 🙂 🙃 😉 😊 😇 🥰 😍 🤩 😘 😋 😛 😜 🤔 🤗 🤭 🤫 🤯 😎 🥳 😢 😭 😡 👍 👎 👏 🙌 👋 🤝 🙏 💪 👀 ❤️ 🧡 💛 💚 💙 💜 🖤 🤍 💔 🔥 ✨ ⭐ 🎉 🎈 🎁 🏆 ✅ ❌ ⚠️ 💡 📌 📎 📅 💬 🚀 🌍 ☀️ 🌈 ☕ 🍕 🐱 🐶'.split(' ');
+function SymbolPanel({close,actions}:{close:()=>void;actions?:SymbolPanelActions}){
+ const grid=(values:string[],type:'Символ'|'Эмодзи')=><div className={`symbol-grid${type==='Эмодзи'?' emoji-grid':''}`}>{values.map((value,index)=><button type="button" key={`${value}-${index}`} aria-label={`${type} ${value}`} title={value} onMouseDown={event=>event.preventDefault()} onClick={()=>{if(actions?.insert(value))close();}}>{value}</button>)}</div>;
+ return <div className="tool-panel symbol-panel"><h2>Специальные символы</h2><Tabs size="small" items={[{key:'symbols',label:'Спецсимволы',children:grid(specialSymbols,'Символ')},{key:'emoji',label:'Эмодзи',children:grid(commonEmoji,'Эмодзи')}]}/></div>;
+}
+
+export function PanelContent({tool,close,value,onApply,linkActions,searchActions,tableActions,imageActions,videoActions,imageMode='standard',seoImageActions,symbolActions}:{tool:ToolId;close:()=>void;value?:string;onApply?:(value:string)=>void;linkActions?:LinkPanelActions;searchActions?:SearchPanelActions;tableActions?:TablePanelActions;imageActions?:ImagePanelActions;videoActions?:VideoPanelActions;imageMode?:'standard'|'seo';seoImageActions?:SeoImageActions;symbolActions?:SymbolPanelActions}){
  if(tool==='textType'||tool==='font'||tool==='fontSize')return <CatalogFormatPanel tool={tool} close={close}/>;
+ if(tool==='color'||tool==='highlight'||tool==='cellColor')return <ColorPanel tool={tool} value={null} onApply={()=>{}}/>;
+ if(tool==='fillColor')return <ColorMenu onSelect={()=>{}}/>;
  if(tool==='link')return <LinkPanel close={close} actions={linkActions}/>;
  if(tool==='paragraph'||tool==='lineHeight')return <SpacingPanel tool={tool} value={value} close={close} onApply={onApply}/>;
- if(['color','highlight','cellColor','fillColor'].includes(tool))return <ColorPanel tool={tool}/>;
  if(tool==='alignment'||tool==='list'||tool==='more')return <MenuPanel tool={tool} value={value} onSelect={selected=>{onApply?.(selected);if(onApply)close();}}/>;
  if(tool==='anchor')return <AnchorPanel close={close} actions={linkActions}/>;
  if(tool==='table')return <TablePanel close={close} actions={tableActions}/>;
- if(tool==='image'||tool==='video'){const video=tool==='video';return <div className="tool-panel"><h2>{video?'Настройка видео':'Настройка изображения'}</h2><MediaTools video={video}/>{!video&&<Button className="upload-placeholder"><Asset node="6716:89102" name="imgIconUploadOutlined"/>Загрузить изображение</Button>}<PanelField label="Высота"><Input aria-label="Высота" placeholder="Введите" addonAfter="px"/></PanelField><PanelField label="Ширина"><Input aria-label="Ширина" placeholder="Введите" addonAfter="px"/></PanelField><PanelField label={video?'Ссылка на видео':'Ссылка для перехода по изображению'} placeholder={video?'Введите значение':'Введите'} required={video}/><Checkbox>Использовать оригинальный размер {video?'видео':'изображения'}</Checkbox><Footer close={close} action="Добавить"/></div>;}
- if(tool==='symbol')return <div className="tool-panel"><h2>Спец символы</h2><div className="symbol-grid">{Array.from('‐‑‒–—―‘’‚‛“”„‟¡¿§©®™†‡•‣․‥…‧‰‱′″‴‵‶‸‹›´µ¶·«»¼½¾℃№ﬀﬁﬂﬃﬄﬅﬆ←↑→↓↔↕↖↗↘↙⁰¹²³⁴⁵⁶⁷⁸⁹⁻⁼⁽⁺⁾ⁿⁱ').map((s,i)=><button type="button" key={i} aria-label={`Символ ${s}`}>{s}</button>)}</div></div>;
+ if(tool==='image')return imageMode==='seo'?<SeoImageChoice close={close} insert={seoImageActions?.insert}/>:<ImagePanel close={close} actions={imageActions}/>;
+ if(tool==='video')return <VideoPanel close={close} actions={videoActions}/>;
+ if(tool==='symbol')return <SymbolPanel close={close} actions={symbolActions}/>;
  if(tool==='search')return <SearchPanel actions={searchActions}/>;
  return null;
 }

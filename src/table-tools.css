@@ -24,7 +24,8 @@
 .rich-input .tiptap td,.rich-input .tiptap th{position:relative;box-sizing:border-box;min-width:120px;height:38px;padding:7px 8px;border:0;border-right:1px solid #d9d9d9;border-bottom:1px solid #d9d9d9;vertical-align:top;text-align:left;font:400 14px/22px Roboto,sans-serif}
 .rich-input .tiptap tr:last-child>td,.rich-input .tiptap tr:last-child>th{border-bottom:0}
 .rich-input .tiptap tr>td:last-child,.rich-input .tiptap tr>th:last-child{border-right:0}
-.rich-input .tiptap th{font-weight:600;background:#fff}
+.rich-input .tiptap th{font:600 14px/22px Inter,sans-serif;background:rgba(0,0,0,.02);border-bottom-color:rgba(0,0,0,.06)}
+.rich-input .tiptap th:not(:last-child){box-shadow:inset -1px 0 #f0f0f0}
 .rich-input .tiptap td>p,.rich-input .tiptap th>p{margin:0}
 .rich-input .tiptap .selectedCell:after{content:"";position:absolute;inset:0;z-index:1;background:rgba(22,119,255,.12);pointer-events:none}
 .rich-input .tiptap .column-resize-handle{position:absolute;top:0;right:-2px;bottom:-1px;width:4px;background:#1677ff;pointer-events:none}

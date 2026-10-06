@@ -1,0 +1,40 @@
+.video-panel{width:340px}
+.video-panel .panel-field{margin:0}
+.video-panel-error{font-size:12px;line-height:18px;color:#ff4d4f}
+.video-link-hint{display:flex;width:16px;height:16px;align-items:center;justify-content:center}
+.video-link-label{display:flex;align-items:center;gap:4px}
+.video-link-label .required{color:#ff4d4f}
+.video-link-hint .panel-icon{width:16px;height:16px}
+.video-player{position:relative;width:100%;height:100%;min-width:0;min-height:0;overflow:hidden;background:#1f1f1f;border:1px solid #d9d9d9;line-height:0}
+.video-player>video,.video-player>iframe,.video-player>.video-poster,.video-player>.video-poster-fallback{display:block;width:100%;height:100%;border:0;object-fit:cover}
+.video-player>iframe{pointer-events:none}
+.video-poster-fallback{display:flex!important;align-items:center;justify-content:center;background:linear-gradient(135deg,#283648,#101722);color:#fff;font:600 16px/24px Inter,sans-serif}
+.video-player-controls{position:absolute;z-index:4;top:10px;left:10px;display:flex;align-items:center;gap:8px;opacity:0;pointer-events:none;transition:opacity .15s}
+.video-player-controls button{display:flex;align-items:center;justify-content:center;width:20px;height:20px;padding:0;border:0;background:transparent;color:#fff;cursor:pointer}
+.video-player-controls button svg{width:20px;height:20px}
+.editor-video:hover .video-player-controls,.editor-video:focus-within .video-player-controls,.editor-video.is-settings-open .video-player-controls,.center-video-wrap .center-image-wrap-picture:hover .video-player-controls,.center-video-wrap .center-image-wrap-picture:focus-within .video-player-controls,.center-video-wrap.is-settings-open .video-player-controls{opacity:1;pointer-events:auto}
+.rich-input .tiptap .editor-video{position:relative;display:inline-block;max-width:100%;vertical-align:bottom;line-height:0;cursor:default}
+.rich-input .tiptap .editor-video-overlay{position:absolute;z-index:1;inset:0;background:rgba(0,0,0,.48);opacity:0;pointer-events:none;transition:opacity .15s}
+.rich-input .tiptap .editor-video-drag,.rich-input .tiptap .editor-video-settings{position:absolute;z-index:3;top:50%;display:flex;align-items:center;justify-content:center;width:24px;height:24px;padding:0;border:0;background:transparent;opacity:0;pointer-events:none;transition:opacity .15s}
+.rich-input .tiptap .editor-video-drag{left:calc(50% - 29px);transform:translateY(-50%);cursor:grab}
+.rich-input .tiptap .editor-video-settings{left:calc(50% + 5px);transform:translateY(-50%);cursor:pointer}
+.rich-input .tiptap .editor-video-drag img,.rich-input .tiptap .editor-video-settings img{display:block;width:24px;height:24px}
+.rich-input .tiptap .editor-video:hover .editor-video-overlay,.rich-input .tiptap .editor-video:focus-within .editor-video-overlay,.rich-input .tiptap .editor-video.is-settings-open .editor-video-overlay,.rich-input .tiptap .editor-video:hover .editor-video-drag,.rich-input .tiptap .editor-video:hover .editor-video-settings,.rich-input .tiptap .editor-video:focus-within .editor-video-drag,.rich-input .tiptap .editor-video:focus-within .editor-video-settings,.rich-input .tiptap .editor-video.is-settings-open .editor-video-drag,.rich-input .tiptap .editor-video.is-settings-open .editor-video-settings{opacity:1;pointer-events:auto}
+.rich-input .tiptap .editor-video[data-layout=break]{display:block;clear:both;margin:8px 0}
+.rich-input .tiptap .editor-video[data-layout=break][data-align=center]{margin-left:auto;margin-right:auto}
+.rich-input .tiptap .editor-video[data-layout=break][data-align=right]{margin-left:auto}
+.rich-input .tiptap .editor-video[data-layout=wrap][data-align=left]{float:left;margin:0 12px 8px 0}
+.rich-input .tiptap .editor-video[data-layout=wrap][data-align=right]{float:right;margin:0 0 8px 12px}
+.rich-input .tiptap .editor-video[data-layout=wrap][data-align=center]{display:block;margin:0}
+.rich-input .tiptap .editor-video.ProseMirror-selectednode,.rich-input .tiptap .editor-video.is-selected{outline:2px solid #1677ff;outline-offset:2px}
+.rich-input .tiptap td .editor-video,.rich-input .tiptap th .editor-video{max-width:100%}
+.rich-input .tiptap .node-editorVideo:has(> .editor-video[data-layout=break]){display:block;width:100%}
+.rich-input .tiptap .node-editorVideo:has(> .editor-video[data-layout=wrap][data-align=left]){float:left}
+.rich-input .tiptap .node-editorVideo:has(> .editor-video[data-layout=wrap][data-align=right]){float:right}
+.rich-input .tiptap p:has(> .node-editorVideo > .editor-video[data-layout=inline][data-align=center]){text-align:center}
+.rich-input .tiptap p:has(> .node-editorVideo > .editor-video[data-layout=inline][data-align=right]){text-align:right}
+.rich-input .tiptap .center-video-wrap .center-image-wrap-picture{width:var(--center-image-width);height:var(--center-image-height)}
+.rich-input .tiptap .center-video-wrap .center-image-wrap-picture .video-player{width:100%;height:100%}
+.rich-input .tiptap .center-video-wrap .center-image-wrap-picture .editor-image-drag{top:50%;left:calc(50% - 29px);width:24px;height:24px;padding:0;transform:translateY(-50%)}
+.rich-input .tiptap .center-video-wrap .center-image-wrap-picture .editor-image-settings{top:50%;left:calc(50% + 5px);width:24px;height:24px;padding:0;transform:translateY(-50%)}
+@media(hover:none){.video-player-controls{opacity:1;pointer-events:auto}}

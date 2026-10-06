@@ -5,6 +5,10 @@
 .ed-tools-Short.ed-Short{padding-top:5px;padding-bottom:5px;}
 .ed-tool{display:inline-flex;align-items:center;justify-content:center;gap:2px;flex:0 0 auto;height:20px;padding:0;border:0;border-radius:3px;background:transparent;color:rgba(0,0,0,.65);cursor:default;font:inherit;}
 .ed-basic-tool:not(:disabled){cursor:pointer;}
+.ed-code-tool:not(:disabled){cursor:pointer;}
+.ed-code-tool[aria-pressed=true]{background:#e6f4ff;}
+.ed-code-tool[aria-pressed=true] .ed-icon{filter:invert(37%) sepia(99%) saturate(2966%) hue-rotate(207deg) brightness(102%) contrast(101%);}
+.text-editor .tiptap code{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace;}
 .ed-paragraph-tool:not(:disabled){cursor:pointer;}
 .ed-paragraph-tool:hover:not(:disabled) .ed-icon{filter:brightness(0);}
 .panel-trigger[data-open=true]>.ed-paragraph-tool .ed-icon{filter:invert(37%) sepia(99%) saturate(2966%) hue-rotate(207deg) brightness(102%) contrast(101%);}
