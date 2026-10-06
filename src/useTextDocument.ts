@@ -4,7 +4,7 @@ import {NodeSelection, Plugin, PluginKey, TextSelection} from '@tiptap/pm/state'
 import {Decoration, DecorationSet} from '@tiptap/pm/view';
 import StarterKit from '@tiptap/starter-kit';
 import {TableKit, TableView} from '@tiptap/extension-table';
-import {TextStyle, FontFamily, FontSize, Color, BackgroundColor} from '@tiptap/extension-text-style';
+import {TextStyle, FontFamily, FontSize, Color} from '@tiptap/extension-text-style';
 import {defaultFormat, type TextFormat, type FormatTool} from './TextFormatting';
 import {AnchorTag} from './AnchorTag';
 import {EditorImage, type EditorImageData} from './EditorImage';
@@ -128,6 +128,15 @@ const ColorAttributes=Extension.create({
  addGlobalAttributes(){return [{types:['tableCell','tableHeader'],attributes:{backgroundColor:{default:null,parseHTML:element=>element.style.backgroundColor||null,renderHTML:attrs=>attrs.backgroundColor?{style:`background-color: ${attrs.backgroundColor}`}:{}}}}];},
 });
 
+const UnderlineColor=Extension.create({
+ name:'editorUnderlineColor',
+ addGlobalAttributes(){return [{types:['underline'],attributes:{underlineColor:{
+  default:null,
+  parseHTML:element=>element.style.textDecorationColor||null,
+  renderHTML:attrs=>attrs.underlineColor?{style:`color: ${attrs.underlineColor}; text-decoration-color: ${attrs.underlineColor}`}:{},
+ }}}];},
+});
+
 const MediaBoundaryParagraphs=Extension.create({
  name:'mediaBoundaryParagraphs',
  addProseMirrorPlugins(){return [new Plugin({
@@ -228,7 +237,7 @@ function selectionParagraph(editor:Editor):ParagraphFormat{
 export function useTextDocument({value,onChange,disabled,placeholder,onFocus,onBlur}:{value:string;onChange:(v:string)=>void;disabled:boolean;placeholder:string;onFocus:()=>void;onBlur:()=>void}){
  const lastEditorText=useRef(value);
  const editor=useEditor({
-  extensions:[StarterKit.configure({heading:{levels:[1,2,3,4,5]},bold:{},italic:{},strike:{},underline:{},code:{},codeBlock:false,blockquote:false,bulletList:{},orderedList:{},listItem:{},listKeymap:{},horizontalRule:false,link:{openOnClick:false,autolink:false,linkOnPaste:false,HTMLAttributes:{rel:'noopener noreferrer'}},trailingNode:false}),ParagraphStyles,SearchHighlight,AnchorTag,EditorImage,EditorVideo,CenterImageWrap,SeoImageSlot,TextStyle,FontFamily,FontSize,Color,BackgroundColor,TableKit.configure({table:{resizable:true,renderWrapper:true,cellMinWidth:120,View:BorderAwareTableView}}),TableAttributes,ColorAttributes,MediaBoundaryParagraphs],
+  extensions:[StarterKit.configure({heading:{levels:[1,2,3,4,5]},bold:{},italic:{},strike:{},underline:{},code:{},codeBlock:false,blockquote:false,bulletList:{},orderedList:{},listItem:{},listKeymap:{},horizontalRule:false,link:{openOnClick:false,autolink:false,linkOnPaste:false,HTMLAttributes:{rel:'noopener noreferrer'}},trailingNode:false}),ParagraphStyles,SearchHighlight,AnchorTag,EditorImage,EditorVideo,CenterImageWrap,SeoImageSlot,TextStyle,FontFamily,FontSize,Color,UnderlineColor,TableKit.configure({table:{resizable:true,renderWrapper:true,cellMinWidth:120,View:BorderAwareTableView}}),TableAttributes,ColorAttributes,MediaBoundaryParagraphs],
   content:plainDocument(value),editable:!disabled,
   editorProps:{attributes:state=>{
    const first=state.doc.firstChild;
@@ -247,7 +256,7 @@ export function useTextDocument({value,onChange,disabled,placeholder,onFocus,onB
   const inCell=editor.isActive('tableCell')||editor.isActive('tableHeader');
   const cell=editor.getAttributes(editor.isActive('tableHeader')?'tableHeader':'tableCell');
   const style=editor.getAttributes('textStyle');
-  return {color:style.color??null,highlight:style.backgroundColor??null,cellColor:inCell?cell.backgroundColor??null:null,inCell};
+  return {color:style.color??null,highlight:editor.getAttributes('underline').underlineColor??null,cellColor:inCell?cell.backgroundColor??null:null,inCell};
  }})??{color:null,highlight:null,cellColor:null,inCell:false};
  const selectedImage=useEditorState({editor,selector:({editor}):EditorImageData|null=>{
   if(!editor||!(editor.state.selection instanceof NodeSelection)||!['editorImage','centerImageWrap'].includes(editor.state.selection.node.type.name)||editor.state.selection.node.attrs.kind==='video')return null;
@@ -288,7 +297,11 @@ export function useTextDocument({value,onChange,disabled,placeholder,onFocus,onB
   if(!editor||disabled)return false;
   const command=editor.chain().focus();
   if(tool==='color')return color?command.setColor(color).run():command.unsetColor().run();
-  if(tool==='highlight')return color?command.setBackgroundColor(color).run():command.unsetBackgroundColor().run();
+  if(tool==='highlight'){
+   if(color)return command.setMark('underline',{underlineColor:color}).run();
+   if(!editor.isActive('underline'))return false;
+   return editor.state.selection.empty?command.setMark('underline',{underlineColor:null}).run():command.updateAttributes('underline',{underlineColor:null}).run();
+  }
   if(!colors.inCell)return false;
   return command.setCellAttribute('backgroundColor',color).run();
  };
