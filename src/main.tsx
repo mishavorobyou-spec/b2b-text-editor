@@ -175,7 +175,7 @@ function Stand(){
      <AnimatedGradientBorder config={borderConfig}/>
     </section>
    </main>
-   <footer className="stand-footer"><div className="brand"><span className="brand-mark">B2B</span><span className="header-divider"/><span className="footer-title">Текстовый редактор</span><span className="version">Версия · 0.58</span></div><Button type="primary" onClick={()=>setSettingsOpen(true)} aria-label="Настроить редактор">Настроить редактор</Button></footer>
+   <footer className="stand-footer"><div className="brand"><span className="brand-mark">B2B</span><span className="header-divider"/><span className="footer-title">Текстовый редактор</span><span className="version">Версия · 0.59</span></div><Button type="primary" onClick={()=>setSettingsOpen(true)} aria-label="Настроить редактор">Настроить редактор</Button></footer>
    <Drawer title="Настроить редактор" placement="right" width="min(480px, 100vw)" open={settingsOpen} onClose={()=>setSettingsOpen(false)} className="settings-drawer">
     <div className="settings" aria-label="Настройки стенда">
      <div className="stand-control"><span>Вид панели</span><Select aria-label="Вид панели" value={layout} onChange={setLayout} options={[{value:'One',label:'One · Полная'},{value:'Two',label:'Two · В две строки'},{value:'Three',label:'Three · С меню'}]}/></div>

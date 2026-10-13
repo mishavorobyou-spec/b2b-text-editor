@@ -8,7 +8,7 @@ body{margin:0;background:#fff;color:#262626;font-family:Inter,sans-serif;font-si
 .workspace{position:relative;z-index:1;background:rgba(255,255,255,.1);border:1px solid #f6f6f6;border-radius:24px;padding:24px;min-height:300px;backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);}
 .workspace-heading{display:flex;align-items:center;margin-bottom:32px;font-weight:500;}
 .editor-stage{max-width:100%;}
-.stage-One{width:1502px;}
+.stage-One{width:100%;}
 .stage-Two{width:768px;}
 .stage-Three{width:736px;}
 .workspace-footer{margin-top:24px;display:flex;justify-content:space-between;gap:16px;align-items:center;color:#8c8c8c;font-size:12px;}
