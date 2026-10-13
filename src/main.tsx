@@ -175,16 +175,16 @@ function Stand(){
      <AnimatedGradientBorder config={borderConfig}/>
     </section>
    </main>
-   <footer className="stand-footer"><div className="brand"><span className="brand-mark">B2B</span><span className="header-divider"/><span className="footer-title">Текстовый редактор</span><span className="version">Версия · 0.59</span></div><Button type="primary" onClick={()=>setSettingsOpen(true)} aria-label="Настроить редактор">Настроить редактор</Button></footer>
+   <footer className="stand-footer"><div className="brand"><span className="brand-mark">B2B</span><span className="header-divider"/><span className="footer-title">Текстовый редактор</span><span className="version">Версия · 0.60</span></div><Button type="primary" onClick={()=>setSettingsOpen(true)} aria-label="Настроить редактор">Настроить редактор</Button></footer>
    <Drawer title="Настроить редактор" placement="right" width="min(480px, 100vw)" open={settingsOpen} onClose={()=>setSettingsOpen(false)} className="settings-drawer">
     <div className="settings" aria-label="Настройки стенда">
      <div className="stand-control"><span>Вид панели</span><Select aria-label="Вид панели" value={layout} onChange={setLayout} options={[{value:'One',label:'One · Полная'},{value:'Two',label:'Two · В две строки'},{value:'Three',label:'Three · С меню'}]}/></div>
      <div className="stand-control"><span>Состояние</span><Select aria-label="Состояние редактора" value={state} onChange={setState} options={[{value:'Auto',label:'Автоматически'},...states.map(s=>({value:s,label:`${s} · ${labels[s]}`}))]}/></div>
      <div className="stand-control"><span>Загрузка изображений</span><Select aria-label="Загрузка изображений" value={imageMode} onChange={setImageMode} options={[{value:'standard',label:'Обычная'},{value:'seo',label:'SEO · Слоты'}]}/></div>
+     <div className="stand-control"><span>Текстовое поле</span><div className="field-switch"><span>Отображение поля</span><Switch size="small" checked={!toolbarOnly} onChange={v=>setToolbarOnly(!v)} aria-label="Отображение текстового поля"/></div></div>
      <div className="settings-columns">
       <div className="stand-control"><span>Высота</span><Segmented<'High'|'Short'> aria-label="Высота панели" value={density} onChange={setDensity} disabled={layout==='Two'} options={[{value:'High',label:'Обычная'},{value:'Short',label:'Компактная'}]}/></div>
       <div className="stand-control"><span>Инструменты</span><Segmented<'Full'|'Short'> aria-label="Набор инструментов" value={tools} onChange={setTools} options={[{value:'Full',label:'Full'},{value:'Short',label:'Short'}]}/></div>
-      <div className="stand-control"><span>Текстовое поле</span><div className="field-switch"><span>Отображение поля</span><Switch size="small" checked={!toolbarOnly} onChange={v=>setToolbarOnly(!v)} aria-label="Отображение текстового поля"/></div></div>
      </div>
     </div>
     <PanelCatalog iconSize={iconSize} order={toolPreferences.order} hidden={toolPreferences.hidden} hiddenSeparators={toolPreferences.hiddenSeparators} categoryNames={toolPreferences.categoryNames} customMode={toolPreferences.customMode} onToggle={toggleTool} onToggleSeparator={toggleSeparator} onMove={moveTool} onMoveCategory={moveCategory} onAddSeparator={addSeparator} onDeleteSeparator={deleteSeparator} onAddCategory={addCategory} onRenameCategory={renameCategory} onDeleteCategory={deleteCategory} onAssignCategory={assignCategory} onClear={clearToolPreferences} onReset={resetToolPreferences}/>

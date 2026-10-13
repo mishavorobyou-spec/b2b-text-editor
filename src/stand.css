@@ -23,10 +23,8 @@ body{margin:0;background:#fff;color:#262626;font-family:Inter,sans-serif;font-si
 .settings-drawer .ant-drawer-body{padding:20px 24px 28px;overflow-y:auto;}
 .settings{display:flex;flex-direction:column;gap:18px;}
 .settings .stand-control{display:flex;flex-direction:column;gap:9px;color:#595959;font-size:12px;}
-.settings-columns{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,.85fr) minmax(0,1.1fr);gap:8px;}
+.settings-columns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
 .settings-columns .stand-control{min-width:0;}
-.settings-columns .field-switch{min-height:32px;padding:4px 6px;gap:4px;font-size:11px;line-height:14px;}
-.settings-columns .field-switch .ant-switch{flex:none;}
 .settings-columns .ant-segmented{display:flex;width:100%;}
 .settings-columns .ant-segmented-group{display:flex;width:100%;}
 .settings-columns .ant-segmented-item{flex:1;}
@@ -68,6 +66,5 @@ body{margin:0;background:#fff;color:#262626;font-family:Inter,sans-serif;font-si
 }
 @media(max-width:400px){
  .settings-columns{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;}
- .settings-columns .stand-control:last-child{grid-column:1/-1;}
  .settings-columns .ant-segmented-item-label{padding-inline:4px;font-size:11px;}
 }

@@ -66,7 +66,7 @@
 .panel-tool-library-list::-webkit-scrollbar{width:8px;background:transparent;}
 .panel-tool-library-list::-webkit-scrollbar-track,.panel-tool-library-list::-webkit-scrollbar-corner{border:0;background:transparent;box-shadow:none;}
 .panel-tool-library-list::-webkit-scrollbar-thumb{border:0;border-radius:8px;background:#bfbfbf;box-shadow:none;}
-.panel-tool-library-row{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:42px;padding:6px 8px;border:1px solid #d9d9d9;border-radius:6px;background:#fff;font-size:13px;}
+.panel-tool-library-row{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:42px;padding:6px 8px;border:0;border-radius:6px;background:#fff;font-size:13px;}
 .panel-tool-library-row>span:first-child{flex:1;min-width:0;}
 .panel-tool-library-row>span:last-child{color:#8c8c8c;font-size:12px;text-align:right;}
 .panel-tool-library-name{display:flex;align-items:center;gap:8px;min-width:0;}
