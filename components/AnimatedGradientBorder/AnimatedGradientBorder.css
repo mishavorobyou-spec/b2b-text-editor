@@ -1,0 +1,11 @@
+.animated-gradient-border {
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  z-index: 2;
+  display: block;
+  width: calc(100% + 2px);
+  height: calc(100% + 2px);
+  border-radius: inherit;
+  pointer-events: none;
+}

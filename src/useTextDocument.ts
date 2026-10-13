@@ -41,6 +41,19 @@ const SearchHighlight=Extension.create({
  },props:{decorations:state=>searchKey.getState(state)??DecorationSet.empty}})];},
 });
 
+const linkSelectionPreviewKey=new PluginKey<boolean>('linkSelectionPreview');
+const LinkSelectionPreview=Extension.create({
+ name:'linkSelectionPreview',
+ addProseMirrorPlugins(){return [new Plugin<boolean>({
+  key:linkSelectionPreviewKey,
+  state:{init:()=>false,apply(transaction,active){return transaction.getMeta(linkSelectionPreviewKey)??active;}},
+  props:{decorations:state=>{
+   if(!linkSelectionPreviewKey.getState(state)||state.selection.empty)return DecorationSet.empty;
+   return DecorationSet.create(state.doc,[Decoration.inline(state.selection.from,state.selection.to,{class:'link-selection-preview'})]);
+  }},
+ })];},
+});
+
 const headingSizes:Record<number,string>={1:'38',2:'30',3:'24',4:'20',5:'16'};
 const emptyInline:InlineFormat={bold:false,italic:false,underline:false,strike:false,code:false};
 const emptyParagraph:ParagraphFormat={alignment:'left',canShiftRight:false,canShiftLeft:false};
@@ -173,6 +186,62 @@ const MediaBoundaryParagraphs=Extension.create({
  })];},
 });
 
+const ProtectedEditorImages=Extension.create({
+ name:'protectedEditorImages',priority:1000,
+ addKeyboardShortcuts(){
+  const protectedNode=(node:ReturnType<Editor['state']['doc']['nodeAt']>)=>Boolean(node&&(node.type.name==='editorImage'||(node.type.name==='centerImageWrap'&&node.attrs.kind!=='video')));
+  const protectedBlock=(node:ReturnType<Editor['state']['doc']['nodeAt']>)=>Boolean(node&&(protectedNode(node)||(node.type.name==='paragraph'&&Array.from({length:node.childCount},(_,index)=>node.child(index)).some(protectedNode))));
+  const neighbor=(direction:'before'|'after')=>{
+   const {selection}=this.editor.state;
+   if(!selection.empty)return false;
+   const at=selection.$from;
+   if(protectedNode(direction==='before'?at.nodeBefore:at.nodeAfter))return true;
+   if(at.parent.type.name!=='paragraph'||at.depth<1)return false;
+   if(direction==='before'&&at.parentOffset!==0)return false;
+   if(direction==='after'&&at.parentOffset!==at.parent.content.size)return false;
+   const index=at.index(at.depth-1)+(direction==='before'?-1:1);
+   return index>=0&&index<at.node(at.depth-1).childCount&&protectedBlock(at.node(at.depth-1).child(index));
+  };
+  const wouldDelete=(direction:'before'|'after')=>{
+   const {doc,selection}=this.editor.state;
+   if(selection instanceof NodeSelection&&protectedNode(selection.node))return true;
+   if(!selection.empty){let containsImage=false;doc.nodesBetween(selection.from,selection.to,node=>{if(protectedNode(node)){containsImage=true;return false;}return true;});return containsImage;}
+   return neighbor(direction);
+  };
+  const removeEmptyNeighbor=(direction:'before'|'after')=>{
+   const {state,view}=this.editor,{selection,doc}=state;
+   if(!selection.empty||!neighbor(direction))return false;
+   const at=selection.$from;
+   if(at.depth!==1||at.parent.type.name!=='paragraph'||at.parent.content.size!==0)return false;
+   const index=at.index(0);
+   if((direction==='before'&&index===doc.childCount-1)||(direction==='after'&&index===0))return true;
+   const from=at.before(1),transaction=state.tr.delete(from,at.after(1));
+   transaction.setSelection(TextSelection.near(transaction.doc.resolve(Math.min(from,transaction.doc.content.size)),direction==='before'?1:-1));
+   view.dispatch(transaction);
+   return true;
+  };
+  return {
+   Backspace:()=>removeEmptyNeighbor('before')||wouldDelete('before'),
+   Delete:()=>removeEmptyNeighbor('after')||wouldDelete('after'),
+   Enter:()=>{
+    const {state,view}=this.editor,{selection}=state;
+    if(!selection.empty||!neighbor('after'))return false;
+    const at=selection.$from;
+    if(at.depth!==1||at.parent.type.name!=='paragraph')return false;
+    const paragraph=state.schema.nodes.paragraph;
+    if(!paragraph)return false;
+    const inlineImage=protectedNode(at.nodeAfter);
+    if(!inlineImage&&at.parentOffset!==at.parent.content.size)return false;
+    const insertAt=inlineImage?(at.parentOffset?selection.from+1:at.before(1)):at.after(1);
+    const transaction=inlineImage&&at.parentOffset?state.tr.split(selection.from).insert(insertAt,paragraph.create()):state.tr.insert(insertAt,paragraph.create());
+    transaction.setSelection(TextSelection.create(transaction.doc,insertAt+1));
+    view.dispatch(transaction);
+    return true;
+   },
+  };
+ },
+});
+
 function linkSelection(editor:Editor):LinkSelection{
  const {selection,doc}=editor.state;
  return {hasSelection:!selection.empty,text:selection.empty?'':doc.textBetween(selection.from,selection.to,' ')};
@@ -237,7 +306,7 @@ function selectionParagraph(editor:Editor):ParagraphFormat{
 export function useTextDocument({value,onChange,disabled,placeholder,onFocus,onBlur}:{value:string;onChange:(v:string)=>void;disabled:boolean;placeholder:string;onFocus:()=>void;onBlur:()=>void}){
  const lastEditorText=useRef(value);
  const editor=useEditor({
-  extensions:[StarterKit.configure({heading:{levels:[1,2,3,4,5]},bold:{},italic:{},strike:{},underline:{},code:{},codeBlock:false,blockquote:false,bulletList:{},orderedList:{},listItem:{},listKeymap:{},horizontalRule:false,link:{openOnClick:false,autolink:false,linkOnPaste:false,HTMLAttributes:{rel:'noopener noreferrer'}},trailingNode:false}),ParagraphStyles,SearchHighlight,AnchorTag,EditorImage,EditorVideo,CenterImageWrap,SeoImageSlot,TextStyle,FontFamily,FontSize,Color,UnderlineColor,TableKit.configure({table:{resizable:true,renderWrapper:true,cellMinWidth:120,View:BorderAwareTableView}}),TableAttributes,ColorAttributes,MediaBoundaryParagraphs],
+  extensions:[StarterKit.configure({heading:{levels:[1,2,3,4,5]},bold:{},italic:{},strike:{},underline:{},code:{},codeBlock:false,blockquote:false,bulletList:{},orderedList:{},listItem:{},listKeymap:{},horizontalRule:false,link:{openOnClick:false,autolink:false,linkOnPaste:false,HTMLAttributes:{rel:'noopener noreferrer'}},trailingNode:false}),ProtectedEditorImages,ParagraphStyles,SearchHighlight,LinkSelectionPreview,AnchorTag,EditorImage,EditorVideo,CenterImageWrap,SeoImageSlot,TextStyle,FontFamily,FontSize,Color,UnderlineColor,TableKit.configure({table:{resizable:true,renderWrapper:true,cellMinWidth:120,View:BorderAwareTableView}}),TableAttributes,ColorAttributes,MediaBoundaryParagraphs],
   content:plainDocument(value),editable:!disabled,
   editorProps:{attributes:state=>{
    const first=state.doc.firstChild;
@@ -316,6 +385,9 @@ export function useTextDocument({value,onChange,disabled,placeholder,onFocus,onB
  const applyLink=(href:string)=>{
   if(!editor||disabled||editor.state.selection.empty)return false;
   return editor.chain().focus().extendMarkRange('link').setLink({href,target:href.startsWith('#')?null:'_blank',rel:'noopener noreferrer'}).run();
+ };
+ const setLinkSelectionPreview=(active:boolean)=>{
+  if(editor&&!editor.isDestroyed)editor.view.dispatch(editor.state.tr.setMeta(linkSelectionPreviewKey,active));
  };
  const createAnchor=(anchorId:string,label:string)=>{
   if(!editor||disabled)return false;
@@ -432,5 +504,5 @@ export function useTextDocument({value,onChange,disabled,placeholder,onFocus,onB
    return document.execCommand(action);
   }
  };
- return {editor,format,inline,paragraph,link,table,colors,selectedImage,selectedVideo,apply,applyInline,insertSymbol,applyColor,applyParagraph,applyLink,createAnchor,deleteAnchor,renameAnchor,updateLinks,insertTable,applyTable,insertImage,insertVideo,insertSeoImageSlot,search,replaceSearch,clearSearch,editingAction};
+ return {editor,format,inline,paragraph,link,table,colors,selectedImage,selectedVideo,apply,applyInline,insertSymbol,applyColor,applyParagraph,applyLink,setLinkSelectionPreview,createAnchor,deleteAnchor,renameAnchor,updateLinks,insertTable,applyTable,insertImage,insertVideo,insertSeoImageSlot,search,replaceSearch,clearSearch,editingAction};
 }

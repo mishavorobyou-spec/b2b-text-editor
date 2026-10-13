@@ -15,6 +15,7 @@
 .rich-input{min-height:98px;resize:vertical;overflow:auto;border:1px solid var(--ed-border);border-top:0;border-radius:0 0 6px 6px;padding:5px 11px;background:white;}
 .rich-input .tiptap{min-height:86px;outline:none;font:400 14px/22px Roboto,sans-serif;white-space:pre-wrap;overflow-wrap:anywhere;}
 .rich-input .tiptap ::selection{background:rgba(186,224,255,.72);color:inherit;}
+.rich-input .tiptap .link-selection-preview{background:rgba(186,224,255,.72);}
 .rich-input .tiptap p{margin:0;}
 .rich-input .tiptap ol,.rich-input .tiptap ul{margin:0;padding-inline-start:22px;list-style-position:outside;}
 .rich-input .tiptap ol ol,.rich-input .tiptap ol ul,.rich-input .tiptap ul ol,.rich-input .tiptap ul ul{padding-inline-start:25px;}

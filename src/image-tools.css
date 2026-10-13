@@ -31,13 +31,18 @@
 .rich-input .tiptap .editor-image-media,.rich-input .tiptap .editor-image-media a{display:block;max-width:100%}
 .rich-input .tiptap .editor-image-media img{display:block;max-width:100%;height:auto}
 .rich-input .tiptap .editor-image-overlay{position:absolute;inset:0;background:rgba(0,0,0,.48);opacity:0;pointer-events:none;transition:opacity .15s}
-.rich-input .tiptap .editor-image-drag,.rich-input .tiptap .editor-image-settings{position:absolute;z-index:1;display:flex;align-items:center;justify-content:center;width:32px;height:32px;padding:4px;border:0;border-radius:4px;background:transparent;opacity:0;pointer-events:none;transition:opacity .15s;cursor:grab}
+.rich-input .tiptap .editor-image-drag,.rich-input .tiptap .editor-image-settings,.rich-input .tiptap .editor-image-delete{position:absolute;z-index:1;display:flex;align-items:center;justify-content:center;width:32px;height:32px;padding:4px;border:0;border-radius:4px;background:transparent;opacity:0;pointer-events:none;transition:opacity .15s;cursor:grab}
 .rich-input .tiptap .editor-image-drag{top:8px;left:8px}
+.rich-input .tiptap .editor-image-delete{top:8px;right:8px;cursor:pointer}
 .rich-input .tiptap .editor-image-settings{top:50%;left:50%;transform:translate(-50%,-50%);cursor:pointer}
-.rich-input .tiptap .editor-image-drag img,.rich-input .tiptap .editor-image-settings img{display:block;width:24px;height:24px}
-.rich-input .tiptap .editor-image:hover .editor-image-overlay,.rich-input .tiptap .editor-image:focus-within .editor-image-overlay,.rich-input .tiptap .editor-image.is-settings-open .editor-image-overlay,.rich-input .tiptap .editor-image:hover .editor-image-drag,.rich-input .tiptap .editor-image:hover .editor-image-settings,.rich-input .tiptap .editor-image:focus-within .editor-image-drag,.rich-input .tiptap .editor-image:focus-within .editor-image-settings,.rich-input .tiptap .editor-image.is-settings-open .editor-image-drag,.rich-input .tiptap .editor-image.is-settings-open .editor-image-settings{opacity:1;pointer-events:auto}
-.rich-input .tiptap .editor-image-settings:hover,.rich-input .tiptap .editor-image-settings:focus-visible{background:rgba(255,255,255,.12)}
-.rich-input .tiptap .editor-image-drag:focus-visible,.rich-input .tiptap .editor-image-settings:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.rich-input .tiptap .editor-image-drag img,.rich-input .tiptap .editor-image-settings img,.rich-input .tiptap .editor-image-delete img{display:block;width:24px;height:24px}
+.rich-input .tiptap .editor-image:hover .editor-image-overlay,.rich-input .tiptap .editor-image:focus-within .editor-image-overlay,.rich-input .tiptap .editor-image.is-settings-open .editor-image-overlay,.rich-input .tiptap .editor-image:hover .editor-image-drag,.rich-input .tiptap .editor-image:hover .editor-image-settings,.rich-input .tiptap .editor-image:hover .editor-image-delete,.rich-input .tiptap .editor-image:focus-within .editor-image-drag,.rich-input .tiptap .editor-image:focus-within .editor-image-settings,.rich-input .tiptap .editor-image:focus-within .editor-image-delete,.rich-input .tiptap .editor-image.is-settings-open .editor-image-drag,.rich-input .tiptap .editor-image.is-settings-open .editor-image-settings,.rich-input .tiptap .editor-image.is-settings-open .editor-image-delete{opacity:1;pointer-events:auto}
+.rich-input .tiptap .editor-image-settings:hover,.rich-input .tiptap .editor-image-settings:focus-visible,.rich-input .tiptap .editor-image-delete:hover,.rich-input .tiptap .editor-image-delete:focus-visible{background:rgba(255,255,255,.12)}
+.rich-input .tiptap .editor-image-drag:focus-visible,.rich-input .tiptap .editor-image-settings:focus-visible,.rich-input .tiptap .editor-image-delete:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.rich-input .tiptap.is-separate-image-dragging{position:relative;cursor:grabbing}
+.rich-input .tiptap.is-separate-image-dragging *{cursor:grabbing!important}
+.rich-input .tiptap.is-separate-image-dragging .ProseMirror-dropcursor,.rich-input:has(.tiptap.is-separate-image-dragging) .ProseMirror-dropcursor{display:none!important}
+.rich-input .tiptap.has-separate-image-target::after{content:'';position:absolute;z-index:20;top:var(--separate-image-drop-y);left:0;right:0;height:3px;border-radius:3px;background:#1677ff;box-shadow:0 0 0 2px rgba(22,119,255,.14);transform:translateY(-50%);pointer-events:none}
 .rich-input .tiptap .editor-image[data-layout=break]{display:block;clear:both;width:max-content;margin:8px 0}
 .rich-input .tiptap .editor-image[data-layout=break][data-align=center]{margin-left:auto;margin-right:auto}
 .rich-input .tiptap .editor-image[data-layout=break][data-align=right]{margin-left:auto}
@@ -48,10 +53,19 @@
 .rich-input .tiptap .editor-image.ProseMirror-selectednode,.rich-input .tiptap .editor-image.is-selected{outline:2px solid #1677ff;outline-offset:2px}
 .rich-input .tiptap td .editor-image,.rich-input .tiptap th .editor-image{max-width:100%}
 .rich-input .tiptap .node-editorImage:has(> .editor-image[data-layout=break]){display:block;width:100%}
+.rich-input .tiptap p:has(> .node-editorImage:first-child > .editor-image[data-layout=break]) > :is(.ProseMirror-separator,.ProseMirror-trailingBreak){display:none!important}
 .rich-input .tiptap .node-editorImage:has(> .editor-image[data-layout=wrap][data-align=left]){float:left}
 .rich-input .tiptap .node-editorImage:has(> .editor-image[data-layout=wrap][data-align=right]){float:right}
-.rich-input .tiptap p:has(> .node-editorImage > .editor-image[data-layout=inline][data-align=center]){text-align:center}
-.rich-input .tiptap p:has(> .node-editorImage > .editor-image[data-layout=inline][data-align=right]){text-align:right}
+.rich-input .tiptap p:has(> .node-editorImage > .editor-image[data-layout=inline]){text-align:left}
+.rich-input .tiptap .node-editorImage:has(> .editor-image[data-layout=inline][data-align=left]){float:left;max-width:calc(100% - 6px);margin:0 6px 0 0}
+.rich-input .tiptap .node-editorImage:has(> .editor-image[data-layout=inline][data-align=right]){float:right;max-width:calc(100% - 6px);margin:0 0 0 6px}
+.rich-input .tiptap .node-editorImage:has(> .editor-image[data-layout=inline][data-align=center]){display:block;width:max-content;max-width:100%;margin:0 auto}
+.rich-input .tiptap p:has(> .node-editorImage > .editor-image[data-layout=inline])::after{content:'';display:block;clear:both}
+.rich-input .tiptap :is(ul,ol)>li:has(>p>.node-editorImage:first-child>.editor-image[data-layout=inline]){list-style:none}
+.rich-input .tiptap :is(ul,ol)>li>p>.node-editorImage:first-child>.editor-image[data-layout=inline]::after{position:absolute;top:var(--image-list-marker-y,-100px);left:var(--image-list-marker-x,-100px);width:16px;height:22px;line-height:22px;text-align:right;white-space:nowrap;pointer-events:none}
+.rich-input .tiptap ul>li>p>.node-editorImage:first-child>.editor-image[data-layout=inline]::after{content:'•'}
+.rich-input .tiptap ol>li>p>.node-editorImage:first-child>.editor-image[data-layout=inline]::after{content:counter(list-item) '.'}
+.rich-input .tiptap :is(ul,ol)>li>p>.node-editorImage:first-child:has(> .editor-image[data-layout=inline][data-align=left]){margin-right:20px}
 .rich-input .tiptap .center-image-wrap{position:relative;max-width:100%;margin:4px 0}
 .rich-input .tiptap .center-image-wrap-content>[data-node-view-content-react]{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:minmax(var(--center-image-height),auto) auto;column-gap:calc(var(--center-image-width) + 24px);min-width:0}
 .rich-input .tiptap .center-image-wrap-content>[data-node-view-content-react]>p{min-width:0;margin:0;overflow-wrap:anywhere}
@@ -61,9 +75,10 @@
 .rich-input .tiptap .center-image-wrap-picture{position:absolute;top:0;left:50%;width:max-content;max-width:100%;line-height:0;transform:translateX(-50%)}
 .rich-input .tiptap .center-image-wrap-picture>a,.rich-input .tiptap .center-image-wrap-picture>a>img,.rich-input .tiptap .center-image-wrap-picture>img{display:block;max-width:100%}
 .rich-input .tiptap .center-image-wrap-picture .editor-image-overlay{position:absolute;inset:0;background:rgba(0,0,0,.48);opacity:0;pointer-events:none;transition:opacity .15s}
-.rich-input .tiptap .center-image-wrap-picture .editor-image-drag,.rich-input .tiptap .center-image-wrap-picture .editor-image-settings{position:absolute;z-index:1;display:flex;align-items:center;justify-content:center;width:32px;height:32px;padding:4px;border:0;border-radius:4px;background:transparent;opacity:0;pointer-events:none;transition:opacity .15s}
+.rich-input .tiptap .center-image-wrap-picture .editor-image-drag,.rich-input .tiptap .center-image-wrap-picture .editor-image-settings,.rich-input .tiptap .center-image-wrap-picture .editor-image-delete{position:absolute;z-index:1;display:flex;align-items:center;justify-content:center;width:32px;height:32px;padding:4px;border:0;border-radius:4px;background:transparent;opacity:0;pointer-events:none;transition:opacity .15s}
 .rich-input .tiptap .center-image-wrap-picture .editor-image-drag{top:8px;left:8px;cursor:grab}
+.rich-input .tiptap .center-image-wrap-picture .editor-image-delete{top:8px;right:8px;cursor:pointer}
 .rich-input .tiptap .center-image-wrap-picture .editor-image-settings{top:50%;left:50%;transform:translate(-50%,-50%);cursor:pointer}
-.rich-input .tiptap .center-image-wrap-picture .editor-image-drag img,.rich-input .tiptap .center-image-wrap-picture .editor-image-settings img{display:block;width:24px;height:24px}
-.rich-input .tiptap .center-image-wrap-picture:hover .editor-image-overlay,.rich-input .tiptap .center-image-wrap-picture:focus-within .editor-image-overlay,.rich-input .tiptap .center-image-wrap.is-settings-open .editor-image-overlay,.rich-input .tiptap .center-image-wrap-picture:hover .editor-image-drag,.rich-input .tiptap .center-image-wrap-picture:hover .editor-image-settings,.rich-input .tiptap .center-image-wrap-picture:focus-within .editor-image-drag,.rich-input .tiptap .center-image-wrap-picture:focus-within .editor-image-settings,.rich-input .tiptap .center-image-wrap.is-settings-open .editor-image-drag,.rich-input .tiptap .center-image-wrap.is-settings-open .editor-image-settings{opacity:1;pointer-events:auto}
+.rich-input .tiptap .center-image-wrap-picture .editor-image-drag img,.rich-input .tiptap .center-image-wrap-picture .editor-image-settings img,.rich-input .tiptap .center-image-wrap-picture .editor-image-delete img{display:block;width:24px;height:24px}
+.rich-input .tiptap .center-image-wrap-picture:hover .editor-image-overlay,.rich-input .tiptap .center-image-wrap-picture:focus-within .editor-image-overlay,.rich-input .tiptap .center-image-wrap.is-settings-open .editor-image-overlay,.rich-input .tiptap .center-image-wrap-picture:hover .editor-image-drag,.rich-input .tiptap .center-image-wrap-picture:hover .editor-image-settings,.rich-input .tiptap .center-image-wrap-picture:hover .editor-image-delete,.rich-input .tiptap .center-image-wrap-picture:focus-within .editor-image-drag,.rich-input .tiptap .center-image-wrap-picture:focus-within .editor-image-settings,.rich-input .tiptap .center-image-wrap-picture:focus-within .editor-image-delete,.rich-input .tiptap .center-image-wrap.is-settings-open .editor-image-drag,.rich-input .tiptap .center-image-wrap.is-settings-open .editor-image-settings,.rich-input .tiptap .center-image-wrap.is-settings-open .editor-image-delete{opacity:1;pointer-events:auto}
 .rich-input .tiptap .center-image-wrap.is-selected .center-image-wrap-picture{outline:2px solid #1677ff;outline-offset:2px}

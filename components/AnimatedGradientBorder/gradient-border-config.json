@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "duration": 18,
+  "phaseOffset": 180,
+  "waves": 2,
+  "base": {
+    "colors": [
+      "#00CCFF",
+      "#1677FF",
+      "#00CCFF"
+    ],
+    "alpha": [
+      0,
+      60,
+      0
+    ],
+    "width": 1,
+    "length": 45,
+    "opacity": 75,
+    "enabled": true
+  },
+  "overlay": {
+    "colors": [
+      "#00CCFF",
+      "#1677FF",
+      "#00CCFF"
+    ],
+    "alpha": [
+      0,
+      100,
+      0
+    ],
+    "width": 1,
+    "length": 20,
+    "opacity": 85,
+    "enabled": true
+  }
+}

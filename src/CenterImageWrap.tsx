@@ -93,12 +93,14 @@ function CenterImageWrapView({node,editor,getPos,updateAttributes,selected}:Node
   event.dataTransfer.effectAllowed='move';
   event.stopPropagation();
  };
+ const remove=()=>{const pos=getPos();if(typeof pos!=='number')return;editor.view.dispatch(editor.state.tr.replaceWith(pos,pos+node.nodeSize,node.content));setOpen(false);editor.view.focus();};
  return <NodeViewWrapper as="div" className={`center-image-wrap${isVideo?' center-video-wrap':''}${selected?' is-selected':''}${open?' is-settings-open':''}`} data-center-image-wrap="" style={style}>
   <NodeViewContent as="div" className="center-image-wrap-content"/>
   <div className="center-image-wrap-picture" contentEditable={false} onDragStart={drag}>
    {isVideo?<VideoPlayer src={attrs.src} muted={attrs.muted} onMutedChange={muted=>updateAttributes({muted})}/>:attrs.href?<a href={attrs.href} target="_blank" rel="noopener noreferrer"><img src={attrs.src} alt={attrs.name||'Изображение'} draggable={false} style={attrs.originalSize?undefined:{...(attrs.width?{width:attrs.width}:{}),...(attrs.height?{height:attrs.height}:{})}} onLoad={loaded}/></a>:<img src={attrs.src} alt={attrs.name||'Изображение'} draggable={false} style={attrs.originalSize?undefined:{...(attrs.width?{width:attrs.width}:{}),...(attrs.height?{height:attrs.height}:{})}} onLoad={loaded}/>}
    <span className="editor-image-overlay" aria-hidden="true"/>
    <span className="editor-image-drag" data-drag-handle draggable="true" title={isVideo?'Переместить видео':'Переместить изображение'}><img src="/icons/image-drag.svg" alt="" draggable={false}/></span>
+   {!isVideo&&<button type="button" className="editor-image-delete" aria-label="Удалить изображение" title="Удалить изображение" onMouseDown={event=>event.preventDefault()} onClick={event=>{event.stopPropagation();remove();}}><img src="/icons/image-delete.svg" alt="" draggable={false}/></button>}
    <Popover trigger="click" placement="bottom" arrow={{pointAtCenter:true}} open={open} onOpenChange={setOpen} destroyOnHidden overlayClassName={`editor-popover panel-${isVideo?'video':'image'}`} content={<div role="dialog" aria-label={isVideo?'Настройка видео':'Настройка изображения'} onKeyDown={event=>{if(event.key==='Escape'){event.stopPropagation();setOpen(false);}}}>{isVideo?<VideoPanel close={()=>setOpen(false)} actions={{selected:attrs,insert:save}}/>:<ImagePanel close={()=>setOpen(false)} actions={{selected:attrs,insert:save}}/>}</div>}>
     <button type="button" className="editor-image-settings" aria-label={isVideo?'Настроить видео':'Настроить изображение'} aria-expanded={open} onMouseDown={event=>event.preventDefault()} onClick={event=>event.stopPropagation()}><img src={open?'/icons/image-settings-active.svg':'/icons/image-settings.svg'} alt=""/></button>
    </Popover>
