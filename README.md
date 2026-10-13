@@ -1,6 +1,6 @@
-# B2B Editor — версия 0.59
+# B2B Editor — версия 0.60
 
-React, TypeScript, Ant Design 5 и Tiptap. Иконки из Figma сохранены в `public/icons`. Редактор опубликован на Vercel: https://b2b-text-editor.vercel.app. Исходники связаны с GitHub-репозиторием `mishavorobyou-spec/b2b-text-editor`; изменения в `master` автоматически собираются для production.
+React, TypeScript, Ant Design 5 и Tiptap. Иконки из Figma сохранены в `public/icons`. Публичная версия 0.60 доступна на Vercel: https://b2b-text-editor.vercel.app. Исходники связаны с GitHub-репозиторием `mishavorobyou-spec/b2b-text-editor`; изменения в `master` автоматически собираются для production.
 
 Контекст для продолжения работы: `INDEX.md`. Архитектура и роли файлов: `Карта_Проекта.md`.
 
