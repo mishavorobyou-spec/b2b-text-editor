@@ -2,7 +2,7 @@ import React, {useEffect,useState} from 'react';
 import {Tooltip} from 'antd';
 import {EditorContent, type Editor as TiptapEditor} from '@tiptap/react';
 import {FormattingControls, defaultFormat, type TextFormat, type FormatTool} from './TextFormatting';
-import {useTextDocument, type EditingAction, type InlineFormat, type InlineTool, type ParagraphFormat, type ParagraphTool} from './useTextDocument';
+import {useTextDocument, type EditingAction, type InlineFormat, type InlineTool, type ListStyle, type ParagraphFormat, type ParagraphTool} from './useTextDocument';
 import {icons} from './all-assets';
 import {CompactToolsTrigger, PanelTrigger, panelForIcon, defaultToolOrder, isToolSeparator, isToolCategory, type AssignableToolId, type ConfigurableToolId, type BuiltinSeparatorId, type ToolOrderItem, type LinkPanelActions, type SearchPanelActions, type TablePanelActions, type ImagePanelActions, type VideoPanelActions, type SeoImageActions, type ColorPanelActions, type SymbolPanelActions} from './ToolPanels';
 import './editor.css';
@@ -28,18 +28,26 @@ const actions:[string,string,EditingAction?][]=[['IconReplaceSearchOutlined','Н
 export function EditorToolbar({state='Default',layout='One',density='High',tools='Full',iconSize=20,imageMode='standard',toolOrder=defaultToolOrder,hiddenTools=[],hiddenSeparators=[],customMode=false,format=defaultFormat,inline=emptyInline,paragraph=emptyParagraph,onFormatChange=()=>{},onInlineAction=()=>{},onParagraphAction=()=>{},onEditingAction=()=>{},linkActions,searchActions,tableActions,imageActions,videoActions,seoImageActions,colorActions,symbolActions}:ToolbarProps & {format?:TextFormat;inline?:InlineFormat;paragraph?:ParagraphFormat;onFormatChange?:(tool:FormatTool,value:string)=>void;onInlineAction?:(tool:InlineTool)=>void;onParagraphAction?:(tool:ParagraphTool,value?:string)=>void;onEditingAction?:(action:EditingAction)=>void;linkActions?:LinkPanelActions;searchActions?:SearchPanelActions;tableActions?:TablePanelActions;imageActions?:ImagePanelActions;videoActions?:VideoPanelActions;seoImageActions?:SeoImageActions;colorActions?:ColorPanelActions;symbolActions?:SymbolPanelActions}){
   const disabled=state==='Disabled';
   const hiddenConfigurable=hiddenTools.filter((id):id is ConfigurableToolId=>id!=='textType'&&id!=='font'&&id!=='fontSize');
+  const availableListTools=toolOrder.filter((id):id is 'orderedList'|'bulletList'=>(id==='orderedList'||id==='bulletList')&&!hiddenTools.includes(id));
+  const listOptions:ListStyle[]=availableListTools.map(id=>id==='orderedList'?'ordered':'bullet');
   const tool=(name:string,label:string,decoration?:string,onClick?:()=>void)=>{const id=panelForIcon[name];const isCode=name==='IconCodeOutlined';const isForward=name==='IconActionForwardOutlined';const button=<button type="button" className={`ed-tool ed-hoverable-tool${isCode?' ed-code-tool':''}${isForward?' ed-action-forward':''}`} aria-label={label} aria-pressed={isCode?inline.code:undefined} disabled={disabled} onMouseDown={e=>e.preventDefault()} onClick={isCode?()=>onInlineAction('code'):onClick}><InteractiveIcon name={name}/>{decoration==='arrow'&&<InteractiveCaret/>}{decoration==='color'&&<span className="ed-swatch" style={{backgroundColor:id==='color'||id==='highlight'||id==='cellColor'?colorActions?.state[id]??'#1677ff':'#1677ff'}}/>}</button>;return id?<PanelTrigger key={name} tool={id} disabled={disabled} linkActions={linkActions} searchActions={searchActions} tableActions={tableActions} imageActions={imageActions} videoActions={videoActions} imageMode={imageMode} seoImageActions={seoImageActions} colorActions={colorActions} symbolActions={symbolActions} hiddenTools={hiddenConfigurable}><Tooltip title={label}>{button}</Tooltip></PanelTrigger>:<Tooltip key={name} title={label}>{button}</Tooltip>;};
   const basicTool=([id,name,label,hoverIcon,activeHoverIcon]:typeof basic[number])=>{
     const active=id!=='clear'&&inline[id];
     return <Tooltip key={id} title={label}><button type="button" className="ed-tool ed-basic-tool" aria-label={label} aria-pressed={id==='clear'?undefined:active} disabled={disabled} onMouseDown={e=>e.preventDefault()} onClick={()=>onInlineAction(id)}><span className="ed-basic-icon"><img className="ed-icon" src={active?`/icons/${hoverIcon}`:icons['img'+name]} alt=""/><img className="ed-basic-hover" src={`/icons/${active&&activeHoverIcon?activeHoverIcon:hoverIcon}`} alt=""/></span></button></Tooltip>;
   };
-  const paragraphTool=([id,name,label,decoration]:typeof paragraphs[number])=>{
+  const paragraphTool=([id,name,label,decoration]:typeof paragraphs[number],options?:ListStyle[])=>{
     const unavailable=id==='shiftRight'&&!paragraph.canShiftRight||id==='shiftLeft'&&!paragraph.canShiftLeft;
     const button=<button type="button" className="ed-tool ed-paragraph-tool ed-hoverable-tool" aria-label={label} disabled={disabled||unavailable} onMouseDown={e=>e.preventDefault()} onClick={id==='shiftRight'||id==='shiftLeft'?()=>onParagraphAction(id):undefined}><InteractiveIcon name={name}/>{decoration==='arrow'&&<InteractiveCaret/>}</button>;
     const panel=id==='alignment'?'alignment':id==='list'?'list':id==='lineSpacing'?'paragraph':id==='paragraphSpacing'?'lineHeight':undefined;
     const value=id==='alignment'?paragraph.alignment:id==='list'?paragraph.list:id==='lineSpacing'?paragraph.lineSpacing:paragraph.paragraphSpacing;
     const trigger=<Tooltip title={label}>{button}</Tooltip>;
-    return panel?<PanelTrigger key={id} tool={panel} disabled={disabled} value={value} onApply={selected=>onParagraphAction(id,selected)}>{trigger}</PanelTrigger>:<React.Fragment key={id}>{trigger}</React.Fragment>;
+    return panel?<PanelTrigger key={id} tool={panel} disabled={disabled} value={value} listOptions={options} onApply={selected=>onParagraphAction(id,selected)}>{trigger}</PanelTrigger>:<React.Fragment key={id}>{trigger}</React.Fragment>;
+  };
+  const listTool=(id:'orderedList'|'bulletList')=>{
+    const value:ListStyle=id==='orderedList'?'ordered':'bullet';
+    const label=id==='orderedList'?'Нумерованный список':'Маркированный список';
+    const name=id==='orderedList'?'IconOrderedListOutlined':'IconBarsOutlined';
+    return <Tooltip key={id} title={label}><button type="button" className="ed-tool ed-hoverable-tool ed-list-tool" aria-label={label} aria-pressed={paragraph.list===value} disabled={disabled} onMouseDown={event=>event.preventDefault()} onClick={()=>onParagraphAction('list',value)}><InteractiveIcon name={name}/></button></Tooltip>;
   };
   const moreButton=<button type="button" className="ed-tool ed-hoverable-tool" aria-label="Дополнительные инструменты" disabled={disabled} onMouseDown={event=>event.preventDefault()}><InteractiveIcon name="IconMoreOutlined"/></button>;
   const configuredTool=(id:ToolOrderItem)=>{
@@ -57,6 +65,11 @@ export function EditorToolbar({state='Default',layout='One',density='High',tools
       return tool(name,label,'color');
     }
     if(layout==='Three'&&!customMode)return null;
+    if(id==='orderedList'||id==='bulletList'){
+      if(tools==='Full')return listTool(id);
+      if(id!==availableListTools[0])return null;
+      return paragraphTool(['list',id==='orderedList'?'IconOrderedListOutlined':'IconBarsOutlined','Список','arrow'],listOptions);
+    }
     const paragraphId={alignment:'alignment',list:'list',paragraph:'lineSpacing',lineHeight:'paragraphSpacing'}[id];
     if(paragraphId){const item=paragraphs.find(([key])=>key===paragraphId);return item?paragraphTool(item):null;}
     if(id==='shiftRight'||id==='shiftLeft'){const item=paragraphs.find(([key])=>key===id);return item?paragraphTool(item):null;}

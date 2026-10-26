@@ -56,10 +56,11 @@ function readToolPreferences():ToolPreferences{
   const saved=JSON.parse(localStorage.getItem(toolPreferencesKey)??'{}');
   const validTool=(value:unknown):value is AssignableToolId=>typeof value==='string'&&assignableTools.includes(value as AssignableToolId);
   const validOrderItem=(value:unknown):value is ToolOrderItem=>validTool(value)||(typeof value==='string'&&(defaultToolOrder.includes(value as ToolOrderItem)||/^separator-[\w-]{1,64}$/.test(value)||/^category-custom-[\w-]{1,64}$/.test(value)));
-  const savedOrder=Array.isArray(saved.order)?[...new Set(saved.order.filter(validOrderItem))] as ToolOrderItem[]:[];
+  const savedOrderRaw=Array.isArray(saved.order)?saved.order.filter((item:unknown)=>validOrderItem(item)||item==='list'):[];
+  const savedOrder=[...new Set(savedOrderRaw.flatMap((item:ToolOrderItem|'list')=>item==='list'?['orderedList','bulletList']:[item]))] as ToolOrderItem[];
   const customMode=saved.customMode===true;
   const order=customMode?savedOrder:saved.version>=2?[...savedOrder,...defaultToolOrder.filter(item=>!savedOrder.includes(item))]:migrateToolOrder(savedOrder);
-  const hidden=Array.isArray(saved.hidden)?[...new Set(saved.hidden.filter(validTool))] as AssignableToolId[]:[];
+  const hidden=Array.isArray(saved.hidden)?[...new Set(saved.hidden.flatMap((item:unknown)=>item==='list'?['orderedList','bulletList']:validTool(item)?[item]:[]))] as AssignableToolId[]:[];
   const hiddenSeparators=Array.isArray(saved.hiddenSeparators)?saved.hiddenSeparators.filter((item:unknown):item is BuiltinSeparatorId=>typeof item==='string'&&item in {'builtin-format':1,'builtin-color':1,'builtin-paragraph':1,'builtin-insert':1,'builtin-edit':1}):[];
   const categoryNames=Object.fromEntries(Object.entries(saved.categoryNames??{}).filter(([id,name])=>/^category-custom-[\w-]{1,64}$/.test(id)&&typeof name==='string'&&name.trim()).map(([id,name])=>[id,(name as string).slice(0,60)]));
   return {order,hidden,hiddenSeparators,categoryNames,customMode};
@@ -120,7 +121,7 @@ function Stand(){
  const [imageMode,setImageMode]=useState<'standard'|'seo'>('standard');
  const [settingsOpen,setSettingsOpen]=useState(false);
  const [toolPreferences,setToolPreferences]=useState<ToolPreferences>(readToolPreferences);
- useEffect(()=>{try{localStorage.setItem(toolPreferencesKey,JSON.stringify({...toolPreferences,version:3}));}catch{/* Настройки остаются доступными до закрытия вкладки. */}},[toolPreferences]);
+ useEffect(()=>{try{localStorage.setItem(toolPreferencesKey,JSON.stringify({...toolPreferences,version:4}));}catch{/* Настройки остаются доступными до закрытия вкладки. */}},[toolPreferences]);
  const toggleTool=(tool:AssignableToolId,enabled:boolean)=>setToolPreferences(current=>({...current,hidden:enabled?current.hidden.filter(item=>item!==tool):[...new Set([...current.hidden,tool])]}));
  const toggleSeparator=(id:BuiltinSeparatorId,enabled:boolean)=>setToolPreferences(current=>({...current,hiddenSeparators:enabled?current.hiddenSeparators.filter(item=>item!==id):[...new Set([...current.hiddenSeparators,id])]}));
  const moveTool=(source:ToolOrderItem,target:ToolOrderItem,placement:'before'|'after')=>setToolPreferences(current=>{
@@ -175,7 +176,7 @@ function Stand(){
      <AnimatedGradientBorder config={borderConfig}/>
     </section>
    </main>
-   <footer className="stand-footer"><div className="brand"><span className="brand-mark">B2B</span><span className="header-divider"/><span className="footer-title">Текстовый редактор</span><span className="version">Версия · 0.60</span></div><Button type="primary" onClick={()=>setSettingsOpen(true)} aria-label="Настроить редактор">Настроить редактор</Button></footer>
+   <footer className="stand-footer"><div className="brand"><span className="brand-mark">B2B</span><span className="header-divider"/><span className="footer-title">Текстовый редактор</span><span className="version">Версия · 0.61</span></div><Button type="primary" onClick={()=>setSettingsOpen(true)} aria-label="Настроить редактор">Настроить редактор</Button></footer>
    <Drawer title="Настроить редактор" placement="right" width="min(480px, 100vw)" open={settingsOpen} onClose={()=>setSettingsOpen(false)} className="settings-drawer">
     <div className="settings" aria-label="Настройки стенда">
      <div className="stand-control"><span>Вид панели</span><Select aria-label="Вид панели" value={layout} onChange={setLayout} options={[{value:'One',label:'One · Полная'},{value:'Two',label:'Two · В две строки'},{value:'Three',label:'Three · С меню'}]}/></div>

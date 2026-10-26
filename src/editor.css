@@ -8,6 +8,7 @@
 .ed-basic-tool:not(:disabled){cursor:pointer;}
 .ed-code-tool:not(:disabled){cursor:pointer;}
 .ed-code-tool[aria-pressed=true]{background:#e6f4ff;}
+.ed-list-tool[aria-pressed=true]{background:#e6f4ff;}
 .text-editor .tiptap code{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace;}
 .ed-paragraph-tool:not(:disabled){cursor:pointer;}
 .ed-basic-icon{display:block;width:20px;height:20px;position:relative;}
@@ -20,8 +21,8 @@
 .ed-caret-icon{width:8px;height:8px;}
 .ed-tool-icon .ed-icon,.ed-caret-icon .ed-caret{position:absolute;inset:0;}
 .ed-tool-icon .ed-hover-icon,.ed-caret-icon .ed-hover-icon{display:none;}
-.ed-hoverable-tool:is(:hover,:focus-visible):not(:disabled) :is(.ed-tool-icon,.ed-caret-icon)>:not(.ed-hover-icon),.panel-trigger[data-open=true]>.ed-hoverable-tool :is(.ed-tool-icon,.ed-caret-icon)>:not(.ed-hover-icon),.ed-code-tool[aria-pressed=true] :is(.ed-tool-icon,.ed-caret-icon)>:not(.ed-hover-icon){display:none;}
-.ed-hoverable-tool:is(:hover,:focus-visible):not(:disabled) :is(.ed-tool-icon,.ed-caret-icon)>.ed-hover-icon,.panel-trigger[data-open=true]>.ed-hoverable-tool :is(.ed-tool-icon,.ed-caret-icon)>.ed-hover-icon,.ed-code-tool[aria-pressed=true] :is(.ed-tool-icon,.ed-caret-icon)>.ed-hover-icon{display:block;}
+.ed-hoverable-tool:is(:hover,:focus-visible):not(:disabled) :is(.ed-tool-icon,.ed-caret-icon)>:not(.ed-hover-icon),.panel-trigger[data-open=true]>.ed-hoverable-tool :is(.ed-tool-icon,.ed-caret-icon)>:not(.ed-hover-icon),.ed-code-tool[aria-pressed=true] :is(.ed-tool-icon,.ed-caret-icon)>:not(.ed-hover-icon),.ed-list-tool[aria-pressed=true] :is(.ed-tool-icon,.ed-caret-icon)>:not(.ed-hover-icon){display:none;}
+.ed-hoverable-tool:is(:hover,:focus-visible):not(:disabled) :is(.ed-tool-icon,.ed-caret-icon)>.ed-hover-icon,.panel-trigger[data-open=true]>.ed-hoverable-tool :is(.ed-tool-icon,.ed-caret-icon)>.ed-hover-icon,.ed-code-tool[aria-pressed=true] :is(.ed-tool-icon,.ed-caret-icon)>.ed-hover-icon,.ed-list-tool[aria-pressed=true] :is(.ed-tool-icon,.ed-caret-icon)>.ed-hover-icon{display:block;}
 .ed-toolbar .ed-tool:not(:disabled){cursor:pointer;}
 .ed-icon{display:block;width:20px;height:20px;flex:none;}
 .ed-caret{display:block;width:8px;height:8px;flex:none;}
